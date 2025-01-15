@@ -1,3 +1,0 @@
-package nettwork
-
-// Receiver
