@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
 	"Heis/pkg/timer"
+	// "Heis/pkg/config"
 )
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
@@ -11,8 +12,10 @@ import (
 
 func main() {
 
-	numFloors := 4
-	numButtons := 3
+	// config.LoadConfig("Heis/config/elevator_params.json")
+
+	NumFloors := 4
+	NumButtons := 3
 
 	//add load from config file
 

@@ -8,7 +8,8 @@ import (
 
 // Config defines the structure of the configuration
 type Config struct {
-	numFloors int    `json:"numFloors"`
+	NumFloors int    `json:"NumFloors"`
+	NumButtons int	 `json:"NumButtons"`
 }
 
 // Use to load Heis/config/elevator_params.json
