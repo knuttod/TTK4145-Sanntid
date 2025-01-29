@@ -1,7 +1,10 @@
 package fsm
 
 import "Heis/pkg/elevio"
-
+//jonas
+const N_floors = 4
+const N_buttons = 3
+//
 type ElevatorBehaviour int
 const (
 	EB_Idle ElevatorBehaviour
@@ -17,13 +20,13 @@ const (
 
 type Elevator struct {
 	Floor int
-	dirn elevio.MotorDirection
-	requests [][]int
+	Dirn elevio.MotorDirection
+	Requests [N_floors][N_buttons]int
 	behaviour ElevatorBehaviour
 
-	config struct {
-		clearRequestVariant ClearRequestVariant
-		doorOpenDuration_s double
+	Config struct {  //type?
+		ClearRequestVariant ClearRequestVariant
+		DoorOpenDuration_s double
 	}
 }
 
