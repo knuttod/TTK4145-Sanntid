@@ -1,10 +1,11 @@
 package main
 
 import (
+	"Heis/pkg/config"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
 	"Heis/pkg/timer"
-	// "Heis/pkg/config"
+	"log"
 )
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
@@ -12,14 +13,16 @@ import (
 
 func main() {
 
-	// config.LoadConfig("Heis/config/elevator_params.json")
+	cfg, err := config.LoadConfig("config/elevator_params.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	// Use the loaded configuration
+	NumFloors := cfg.NumFloors
+	// NumButtons := cfg.NumButtons
+	// NumFloors := 4
 
-	NumFloors := 4
-	NumButtons := 3
-
-	//add load from config file
-
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:15657", NumFloors)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -38,10 +41,10 @@ func main() {
 	//add functionality to resolve starting between floors
 
 	//Initializing floor matrix
-	floorMatrix := make([][]int, numFloors)
-	for i := range floorMatrix {
-		floorMatrix[i] = make([]int, numButtons)
-	}
+	// floorMatrix := make([][]int, NumFloors)
+	// for i := range floorMatrix {
+	// 	floorMatrix[i] = make([]int, NumButtons)
+	// }
 
 	select {}
 

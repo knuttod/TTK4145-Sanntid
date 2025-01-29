@@ -1,6 +1,14 @@
 package fsm
 
-import "Heis/pkg/elevio"
+import (
+	"Heis/pkg/elevio"
+	"log"
+	"fmt"
+)
+
+// jonas
+const N_floors = 4
+const N_buttons = 3
 
 type ElevatorBehaviour int
 
@@ -20,34 +28,39 @@ const (
 type Elevator struct {
 	Floor     int
 	Dirn      elevio.MotorDirection
-	Requests  [][]int
+	Requests  [][]bool
 	Behaviour ElevatorBehaviour
 
-	Config struct {
+	Config struct { //type?
 		ClearRequestVariant ClearRequestVariant
 		DoorOpenDuration_s  float64
 	}
 }
 
-var elevator Elevator
-
 func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimer chan float64) {
 	// init state machine between floors
+	var elevator Elevator
+	fsm_init(&elevator)
 
-	fsm_init()
-
-	if <-drv_floors == -1 {
-		initBetweenFloors()
-	}
+	// if <-drv_floors == -1 {
+	// 	initBetweenFloors(&elevator)
+	// 	log.Println("hello from fsm if statement")
+	// 	fmt.Println("IF uff")
+	// }
 
 	for {
+		fmt.Println("bo")
+		fmt.Println("State: ", elevator.Behaviour)
 		select {
 		case a := <-drv_buttons:
-			requestButtonPress(a.Floor, a.Button, drv_doorTimer)
+			requestButtonPress(&elevator, a.Floor, a.Button, drv_doorTimer)
+			log.Println("drv_buttons: %v", a)
 		case a := <-drv_floors:
-			floorArrival(a, drv_doorTimer)
+			floorArrival(&elevator, a, drv_doorTimer)
+			log.Println("drv_floors: %v", a)
 		case <-drv_doorTimer:
-			DoorTimeout(drv_doorTimer)
+			DoorTimeout(&elevator, drv_doorTimer)
+			log.Println("drv_doortimer timed out")
 		}
 	}
 }
