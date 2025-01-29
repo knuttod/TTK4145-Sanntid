@@ -15,11 +15,11 @@ func main() {
 	// config.LoadConfig("Heis/config/elevator_params.json")
 
 	NumFloors := 4
-	NumButtons := 3
+	//NumButtons := 3
 
 	//add load from config file
 
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:15657", NumFloors)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -38,10 +38,10 @@ func main() {
 	//add functionality to resolve starting between floors
 
 	//Initializing floor matrix
-	floorMatrix := make([][]int, numFloors)
-	for i := range floorMatrix {
-		floorMatrix[i] = make([]int, numButtons)
-	}
+	// floorMatrix := make([][]int, NumFloors)
+	// for i := range floorMatrix {
+	// 	floorMatrix[i] = make([]int, NumButtons)
+	// }
 
 	select {}
 

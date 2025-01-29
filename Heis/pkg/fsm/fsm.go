@@ -1,10 +1,11 @@
 package fsm
 
 import "Heis/pkg/elevio"
-//jonas
+
+// jonas
 const N_floors = 4
 const N_buttons = 3
-//
+
 type ElevatorBehaviour int
 
 const (
@@ -21,38 +22,34 @@ const (
 )
 
 type Elevator struct {
-	Floor int
-	Dirn elevio.MotorDirection
-	Requests [N_floors][N_buttons]int
-	behaviour ElevatorBehaviour
+	Floor     int
+	Dirn      elevio.MotorDirection
+	Requests  [N_floors][N_buttons]int
+	Behaviour ElevatorBehaviour
 
-	Config struct {  //type?
+	Config struct { //type?
 		ClearRequestVariant ClearRequestVariant
-		DoorOpenDuration_s double
+		DoorOpenDuration_s  float64
 	}
 }
 
-func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool) {
-// init state machine between floors
-	var elevator Elevator
-
 func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimer chan float64) {
 	// init state machine between floors
-
-	fsm_init()
+	var elevator Elevator
+	fsm_init(&elevator)
 
 	if <-drv_floors == -1 {
-		initBetweenFloors()
+		initBetweenFloors(&elevator)
 	}
 
 	for {
 		select {
 		case a := <-drv_buttons:
-			requestButtonPress(a.Floor, a.Button, drv_doorTimer)
+			requestButtonPress(&elevator, a.Floor, a.Button, drv_doorTimer)
 		case a := <-drv_floors:
-			floorArrival(a, drv_doorTimer)
+			floorArrival(&elevator, a, drv_doorTimer)
 		case <-drv_doorTimer:
-			DoorTimeout(drv_doorTimer)
+			DoorTimeout(&elevator, drv_doorTimer)
 		}
 	}
 }

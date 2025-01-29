@@ -1,18 +1,17 @@
-package request
+package fsm
 
 import (
 	"Heis/pkg/elevio"
-	"Heis/pkg/fsm"
 )
 
 type DirnBehaviourPair struct {
-	Behaviour fsm.ElevatorBehaviour
+	Behaviour ElevatorBehaviour
 	Dirn      elevio.MotorDirection
 }
 
-func Above(e fsm.Elevator) int {
-	for f := e.Floor; f < fsm.N_floors; f++ {
-		for btn := 0; btn < fsm.N_buttons; btn++ {
+func Above(e Elevator) int {
+	for f := e.Floor; f < N_floors; f++ {
+		for btn := 0; btn < N_buttons; btn++ {
 			if e.Requests[f][btn] != 0 {
 				return 1
 			}
@@ -22,9 +21,9 @@ func Above(e fsm.Elevator) int {
 	return 0
 }
 
-func Below(e fsm.Elevator) int {
+func Below(e Elevator) int {
 	for f := 0; f < e.Floor; f++ {
-		for btn := 0; btn < fsm.N_buttons; btn++ {
+		for btn := 0; btn < N_buttons; btn++ {
 			if e.Requests[f][btn] != 0 {
 				return 1
 			}
@@ -33,8 +32,8 @@ func Below(e fsm.Elevator) int {
 	return 0
 }
 
-func Here(e fsm.Elevator) int {
-	for btn := 0; btn < fsm.N_buttons; btn++ {
+func Here(e Elevator) int {
+	for btn := 0; btn < N_buttons; btn++ {
 		if e.Requests[e.Floor][btn] != 0 {
 			return 1
 		}
@@ -42,98 +41,98 @@ func Here(e fsm.Elevator) int {
 	return 0
 }
 
-func chooseDirection(e fsm.Elevator) DirnBehaviourPair {
+func chooseDirection(e Elevator) DirnBehaviourPair {
 
 	switch e.Dirn {
 	case elevio.MD_Up:
 		if Above(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: fsm.EB_Moving}
+			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_Moving}
 		} else if Here(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: fsm.EB_DoorOpen}
+			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_DoorOpen}
 		} else if Below(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: fsm.EB_Moving}
+			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_Moving}
 		} else {
-			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: fsm.EB_Idle}
+			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
 		}
 	case elevio.MD_Down:
 		if Below(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: fsm.EB_Moving}
+			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_Moving}
 		} else if Here(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: fsm.EB_DoorOpen}
+			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_DoorOpen}
 		} else if Above(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: fsm.EB_Moving}
+			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_Moving}
 		} else {
-			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: fsm.EB_Idle}
+			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
 		}
 
 	case elevio.MD_Stop:
 		if Here(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: fsm.EB_DoorOpen}
+			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_DoorOpen}
 		} else if Above(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: fsm.EB_Moving}
+			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_Moving}
 		} else if Below(e) != 0 {
-			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: fsm.EB_Moving}
+			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_Moving}
 		} else {
-			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: fsm.EB_Idle}
+			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
 		}
 	default:
-		return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: fsm.EB_Idle}
+		return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
 	}
 
 }
 
-func ShouldStop(e fsm.Elevator) int {
+func ShouldStop(e Elevator) bool {
 	switch e.Dirn {
 	case elevio.MD_Down:
 		if (e.Requests[e.Floor][elevio.BT_HallDown] != 0) || (e.Requests[e.Floor][elevio.BT_Cab] != 0) || (Below(e) == 0) {
-			return 1
+			return true
 		} else {
-			return 0
+			return false
 		}
 
 	case elevio.MD_Up:
 		if (e.Requests[e.Floor][elevio.BT_HallUp] != 0) || (e.Requests[e.Floor][elevio.BT_Cab] != 0) || (Below(e) == 0) {
-			return 1
+			return true
 		} else {
-			return 0
+			return false
 		}
 
 	case elevio.MD_Stop:
 	default:
-		return 1
+		return true
 
 	}
-	return 0
+	return false
 }
 
-func ShouldClearImmediately(e fsm.Elevator, btn_floor int, btn_type elevio.ButtonType) int {
+func ShouldClearImmediately(e Elevator, btn_floor int, btn_type elevio.ButtonType) bool {
 	switch e.Config.ClearRequestVariant {
-	case fsm.CV_ALL:
+	case CV_ALL:
 		if e.Floor == btn_floor {
-			return 1
+			return true
 		} else {
-			return 0
+			return false
 		}
-	case fsm.CV_InDirn:
+	case CV_InDirn:
 		if e.Floor == btn_floor && ((e.Dirn == elevio.MD_Up && btn_type == elevio.BT_HallUp) ||
 			(e.Dirn == elevio.MD_Down && btn_type == elevio.BT_HallDown) ||
 			(e.Dirn == elevio.MD_Stop) || (btn_type == elevio.BT_Cab)) {
-			return 1
+			return true
 		} else {
-			return 0
+			return false
 		}
 	default:
-		return 0
+		return false
 	}
 }
 
-func ClearAtCurrentFloor(e fsm.Elevator) fsm.Elevator {
+func ClearAtCurrentFloor(e Elevator) Elevator {
 	switch e.Config.ClearRequestVariant {
-	case fsm.CV_ALL:
-		for btn := 0; btn < fsm.N_buttons; btn++ {
+	case CV_ALL:
+		for btn := 0; btn < N_buttons; btn++ {
 			e.Requests[e.Floor][btn] = 0
 		}
-	case fsm.CV_InDirn:
+	case CV_InDirn:
 		e.Requests[e.Floor][elevio.BT_Cab] = 0
 		switch e.Dirn {
 		case elevio.MD_Up:
