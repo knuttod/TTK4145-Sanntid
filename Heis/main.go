@@ -13,13 +13,14 @@ import (
 
 func main() {
 
-	cfg, err := config.LoadConfig("Heis/config/elevator_params.json")
+	cfg, err := config.LoadConfig("config/elevator_params.json")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 	// Use the loaded configuration
 	NumFloors := cfg.NumFloors
-	NumButtons := cfg.NumButtons
+	// NumButtons := cfg.NumButtons
+	// NumFloors := 4
 
 	elevio.Init("localhost:15657", NumFloors)
 

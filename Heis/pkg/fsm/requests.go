@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"Heis/pkg/elevio"
+	//"fmt"
 )
 
 type DirnBehaviourPair struct {
@@ -9,68 +10,68 @@ type DirnBehaviourPair struct {
 	Dirn      elevio.MotorDirection
 }
 
-func Above(e Elevator) int {
-	for f := e.Floor; f < N_floors; f++ {
+func Above(e Elevator) bool {
+	for f := e.Floor + 1; f < N_floors; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.Requests[f][btn] != 0 {
-				return 1
+			if e.Requests[f][btn] {
+				return true
 			}
 		}
 	}
 
-	return 0
+	return false
 }
 
-func Below(e Elevator) int {
+func Below(e Elevator) bool {
 	for f := 0; f < e.Floor; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.Requests[f][btn] != 0 {
-				return 1
+			if e.Requests[f][btn] {
+				return true
 			}
 		}
 	}
-	return 0
+	return false
 }
 
-func Here(e Elevator) int {
+func Here(e Elevator) bool {
 	for btn := 0; btn < N_buttons; btn++ {
-		if e.Requests[e.Floor][btn] != 0 {
-			return 1
+		if e.Requests[e.Floor][btn] {
+			return true
 		}
 	}
-	return 0
+	return false
 }
 
 func chooseDirection(e Elevator) DirnBehaviourPair {
 
 	switch e.Dirn {
 	case elevio.MD_Up:
-		if Above(e) != 0 {
+		if Above(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_Moving}
-		} else if Here(e) != 0 {
+		} else if Here(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_DoorOpen}
-		} else if Below(e) != 0 {
+		} else if Below(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_Moving}
 		} else {
 			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
 		}
 	case elevio.MD_Down:
-		if Below(e) != 0 {
+		if Below(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_Moving}
-		} else if Here(e) != 0 {
+		} else if Here(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_DoorOpen}
-		} else if Above(e) != 0 {
+		} else if Above(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_Moving}
 		} else {
 			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
 		}
 
 	case elevio.MD_Stop:
-		if Here(e) != 0 {
+		if Here(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_DoorOpen}
-		} else if Above(e) != 0 {
+		} else if Above(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: EB_Moving}
-		} else if Below(e) != 0 {
+		} else if Below(e) {
 			return DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: EB_Moving}
 		} else {
 			return DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: EB_Idle}
@@ -84,14 +85,14 @@ func chooseDirection(e Elevator) DirnBehaviourPair {
 func ShouldStop(e Elevator) bool {
 	switch e.Dirn {
 	case elevio.MD_Down:
-		if (e.Requests[e.Floor][elevio.BT_HallDown] != 0) || (e.Requests[e.Floor][elevio.BT_Cab] != 0) || (Below(e) == 0) {
+		if (e.Requests[e.Floor][elevio.BT_HallDown]) || (e.Requests[e.Floor][elevio.BT_Cab]) || (!Below(e)) {
 			return true
 		} else {
 			return false
 		}
 
 	case elevio.MD_Up:
-		if (e.Requests[e.Floor][elevio.BT_HallUp] != 0) || (e.Requests[e.Floor][elevio.BT_Cab] != 0) || (Below(e) == 0) {
+		if (e.Requests[e.Floor][elevio.BT_HallUp]) || (e.Requests[e.Floor][elevio.BT_Cab]) || (!Above(e)) {
 			return true
 		} else {
 			return false
@@ -130,26 +131,26 @@ func ClearAtCurrentFloor(e Elevator) Elevator {
 	switch e.Config.ClearRequestVariant {
 	case CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
-			e.Requests[e.Floor][btn] = 0
+			e.Requests[e.Floor][btn] = false
 		}
 	case CV_InDirn:
-		e.Requests[e.Floor][elevio.BT_Cab] = 0
+		e.Requests[e.Floor][elevio.BT_Cab] = false
 		switch e.Dirn {
 		case elevio.MD_Up:
-			if Above(e) == 0 && (e.Requests[e.Floor][elevio.BT_HallUp] == 0) {
-				e.Requests[e.Floor][elevio.BT_HallDown] = 0
+			if (!Above(e)) && (!e.Requests[e.Floor][elevio.BT_HallUp]) {
+				e.Requests[e.Floor][elevio.BT_HallDown] = false
 			}
-			e.Requests[e.Floor][elevio.BT_HallUp] = 0
+			e.Requests[e.Floor][elevio.BT_HallUp] = false
 
 		case elevio.MD_Down:
-			if (Below(e) == 0) && (e.Requests[e.Floor][elevio.BT_HallDown] == 0) {
-				e.Requests[e.Floor][elevio.BT_HallUp] = 0
+			if (!Below(e)) && (!e.Requests[e.Floor][elevio.BT_HallDown]) {
+				e.Requests[e.Floor][elevio.BT_HallUp] = false
 			}
-			e.Requests[e.Floor][elevio.BT_HallDown] = 0
+			e.Requests[e.Floor][elevio.BT_HallDown] = false
 		case elevio.MD_Stop:
 		default:
-			e.Requests[e.Floor][elevio.BT_HallUp] = 0
-			e.Requests[e.Floor][elevio.BT_HallDown] = 0
+			e.Requests[e.Floor][elevio.BT_HallUp] = false
+			e.Requests[e.Floor][elevio.BT_HallDown] = false
 		}
 	default:
 
