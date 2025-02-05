@@ -48,8 +48,9 @@ func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, dr
 	}
 
 	for {
-		fmt.Println("bo")
 		fmt.Println("State: ", elevator.Behaviour)
+	
+
 		select {
 		case a := <-drv_buttons:
 			requestButtonPress(&elevator, a.Floor, a.Button, drv_doorTimer)
