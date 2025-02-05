@@ -2,7 +2,7 @@ package fsm
 
 import (
 	"Heis/pkg/elevio"
-	"fmt"
+	//"fmt"
 )
 
 func fsm_init(e *Elevator) {
@@ -48,13 +48,16 @@ func requestButtonPress(e *Elevator, btn_floor int, btn_type elevio.ButtonType, 
 		switch pair.Behaviour {
 		case EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
-			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
+			drv_doorTimer <- 0.0
+			//drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			(*e) = ClearAtCurrentFloor((*e))
 
 		case EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)
+			//clear something at this floor??
 
-			//case EB_Idle:
+		case EB_Idle:
+			//need something here?
 		}
 
 	}
@@ -63,16 +66,12 @@ func requestButtonPress(e *Elevator, btn_floor int, btn_type elevio.ButtonType, 
 
 func floorArrival(e *Elevator, newFloor int, drv_doorTimer chan float64) {
 
-	fmt.Println("Floor")
-
 	(*e).Floor = newFloor
 	elevio.SetFloorIndicator((*e).Floor)
 
 	switch (*e).Behaviour {
 	case EB_Moving:
-		fmt.Println("liten stop")
 		if ShouldStop((*e)) {
-			fmt.Println("STOP!!!!")
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
 			(*e) = ClearAtCurrentFloor((*e))
@@ -88,12 +87,9 @@ func DoorTimeout(e *Elevator, drv_doorTimer chan float64) {
 
 	switch (*e).Behaviour {
 	case EB_DoorOpen:
-		fmt.Println("Door open")
 		var pair DirnBehaviourPair = chooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
-
-		fmt.Println("Behaviour", (*e).Behaviour)
 
 		switch (*e).Behaviour {
 		case EB_DoorOpen:
@@ -108,7 +104,6 @@ func DoorTimeout(e *Elevator, drv_doorTimer chan float64) {
 		//
 
 		case EB_Idle:
-			fmt.Println("idle")
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection((*e).Dirn)
 
