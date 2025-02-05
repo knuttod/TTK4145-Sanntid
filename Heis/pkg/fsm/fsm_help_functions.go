@@ -30,8 +30,8 @@ func requestButtonPress(e *Elevator, btn_floor int, btn_type elevio.ButtonType, 
 	switch (*e).Behaviour {
 	case EB_DoorOpen:
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
-			//drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			drv_doorTimer <- 0.0
+			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
+			//drv_doorTimer <- 0.0
 		} else {
 			(*e).Requests[btn_floor][btn_type] = true
 		}
@@ -76,8 +76,8 @@ func floorArrival(e *Elevator, newFloor int, drv_doorTimer chan float64) {
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
 			(*e) = ClearAtCurrentFloor((*e))
-			//drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			drv_doorTimer <- 0.0
+			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
+			//drv_doorTimer <- 0.0
 			setAllLights(e)
 			(*e).Behaviour = EB_DoorOpen
 		}
@@ -97,11 +97,11 @@ func DoorTimeout(e *Elevator, drv_doorTimer chan float64) {
 
 		switch (*e).Behaviour {
 		case EB_DoorOpen:
-			//drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			drv_doorTimer <- 0.0
+			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
+			//drv_doorTimer <- 0.0
 			(*e) = ClearAtCurrentFloor((*e))
 			setAllLights(e)
-		
+
 		//lagt inn selv
 		case EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)

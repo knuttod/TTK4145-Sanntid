@@ -2,12 +2,24 @@ package timer
 
 import "time"
 
-func Timer(drv_doorTimer chan float64) {
+func Timer(Timer chan float64) {
 	for {
 		select {
-		case a := <-drv_doorTimer:
-			time.Sleep(time.Second * time.Duration(a))
-			drv_doorTimer <- 0.0
+		case t := <-Timer:
+			time.Sleep(time.Second * time.Duration(t))
+			Timer <- 0.0
+		}
+	}
+}
+
+func TimerFinished(Timer chan float64) {
+	var finished bool = false
+	for finished == false {
+		select {
+		case t := <-Timer:
+			if t == 0.0 {
+				finished = true
+			}
 		}
 	}
 }
