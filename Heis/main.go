@@ -36,7 +36,7 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimer)
-	go timer.Timer(drv_doorTimer)
+	go timer.Timer(drv_doorTimer, drv_obstr)
 
 	//add functionality to resolve starting between floors
 
