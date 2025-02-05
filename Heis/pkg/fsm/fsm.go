@@ -2,8 +2,8 @@ package fsm
 
 import (
 	"Heis/pkg/elevio"
-	"log"
 	"fmt"
+	"log"
 )
 
 // jonas
@@ -42,15 +42,15 @@ func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, dr
 	var elevator Elevator
 	fsm_init(&elevator)
 
-	// if <-drv_floors == -1 {
-	// 	initBetweenFloors(&elevator)
-	// 	log.Println("hello from fsm if statement")
-	// 	fmt.Println("IF uff")
-	// }
+	//Kanskje ikke så robust, uten bruk av channelen
+	if elevio.GetFloor() == -1 {
+		initBetweenFloors(&elevator)
+	}
 
 	for {
-		fmt.Println("bo")
 		fmt.Println("State: ", elevator.Behaviour)
+	
+
 		select {
 		case a := <-drv_buttons:
 			requestButtonPress(&elevator, a.Floor, a.Button, drv_doorTimer)
