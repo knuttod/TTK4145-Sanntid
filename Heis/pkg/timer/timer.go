@@ -2,12 +2,22 @@ package timer
 
 import "time"
 
-func Timer(Timer chan float64) {
+func Timer(TimerStart chan float64, TimerEnd chan bool) {
+
 	for {
 		select {
-		case t := <-Timer:
-			time.Sleep(time.Second * time.Duration(t))
-			Timer <- 0.0
+		case t := <-TimerStart:
+			timer := time.NewTimer(time.Second * time.Duration(t))
+			for {
+				select {
+				case t := <-TimerStart:
+					timer.Reset(time.Second * time.Duration(t))
+				
+				case <- timer.C:
+					TimerEnd <- true
+					break;
+				}
+			}
 		}
 	}
 }
