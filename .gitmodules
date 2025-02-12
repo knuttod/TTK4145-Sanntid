@@ -1,3 +1,6 @@
 [submodule "Heis/network"]
 	path = Heis/network
 	url = https://github.com/TTK4145/Network-go.git
+[submodule "Network-go"]
+	path = Network-go
+	url = https://github.com/TTK4145/Network-go
