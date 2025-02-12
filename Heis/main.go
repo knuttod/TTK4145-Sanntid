@@ -28,23 +28,16 @@ func main() {
 	drv_floors := make(chan int)
 	drv_obstr := make(chan bool)
 	drv_stop := make(chan bool)
-	drv_doorTimer := make(chan float64)
+	drv_doorTimerStart := make(chan float64)
+	drv_doorTimerFinished := make(chan bool)
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
-	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimer)
-	go timer.Timer(drv_doorTimer, drv_obstr)
-
-	//add functionality to resolve starting between floors
-
-	//Initializing floor matrix
-	// floorMatrix := make([][]int, NumFloors)
-	// for i := range floorMatrix {
-	// 	floorMatrix[i] = make([]int, NumButtons)
-	// }
+	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished)
+	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
 	select {}
 

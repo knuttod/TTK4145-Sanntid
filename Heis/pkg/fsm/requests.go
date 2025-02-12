@@ -147,10 +147,14 @@ func ClearAtCurrentFloor(e Elevator) Elevator {
 				e.Requests[e.Floor][elevio.BT_HallUp] = false
 			}
 			e.Requests[e.Floor][elevio.BT_HallDown] = false
-		//case elevio.MD_Stop:
+		// case elevio.MD_Stop:
+		// 	e.Requests[e.Floor][elevio.BT_HallUp] = false
+		// 	e.Requests[e.Floor][elevio.BT_HallDown] = false
+		// 	e.Requests[e.Floor][elevio.BT_Cab] = false
 		default:
 			e.Requests[e.Floor][elevio.BT_HallUp] = false
 			e.Requests[e.Floor][elevio.BT_HallDown] = false
+			//e.Requests[e.Floor][elevio.BT_Cab] = false
 		}
 	default:
 
