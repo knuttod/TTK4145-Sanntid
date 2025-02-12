@@ -4,14 +4,45 @@ import (
 	"Heis/pkg/config"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
+	"Heis/pkg/network/bcast"
+	"Heis/pkg/network/localip"
+	"Heis/pkg/network/peers"
 	"Heis/pkg/timer"
+	"flag"
+	"fmt"
 	"log"
+	"os"
+	"time"
 )
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
 //!!!!!!!!!!!
 
+type HelloMsg struct {
+	Message string
+	Iter    int
+}
+
 func main() {
+	// Elevator id can be anything. Here we pass it on the command line, using
+	//  `go run main.go -id=our_id`
+	var id string
+	var port string
+	flag.StringVar(&id, "id", "", "id of this peer")
+	flag.StringVar(&port, "port", "", "port of this peer")
+	flag.Parse()
+
+	// ... or alternatively, we can use the local IP address.
+	// (But since we can run multiple programs on the same PC, we also append the
+	//  process ID)
+	if id == "" {
+		localIP, err := localip.LocalIP()
+		if err != nil {
+			fmt.Println(err)
+			localIP = "DISCONNECTED"
+		}
+		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	}
 
 	cfg, err := config.LoadConfig("config/elevator_params.json")
 	if err != nil {
@@ -22,7 +53,7 @@ func main() {
 	// NumButtons := cfg.NumButtons
 	// NumFloors := 4
 
-	elevio.Init("localhost:15657", NumFloors)
+	elevio.Init("localhost:"+port, NumFloors)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -36,9 +67,43 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
+	peerUpdateCh := make(chan peers.PeerUpdate)
+	peerTxEnable := make(chan bool)
+	Tx := make(chan HelloMsg)
+	Rx := make(chan HelloMsg)
+
+	go peers.Transmitter(15647, id, peerTxEnable)
+	go peers.Receiver(15647, peerUpdateCh)
+	go bcast.Transmitter(16569, Tx)
+	go bcast.Receiver(16569, Rx)
+
 	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
-	select {}
+	// The example message. We just send one of these every second.
+	go func() {
+		helloMsg := HelloMsg{"Hello from " + id, 0}
+		for {
+			helloMsg.Iter++
+			Tx <- helloMsg
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	fmt.Println("Started")
+	for {
+		select {
+		case p := <-peerUpdateCh:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
+
+		case a := <-Rx:
+			fmt.Printf("Received: %#v\n", a)
+		}
+	}
+
+	//	select {}
 
 }
