@@ -8,20 +8,15 @@ import (
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/timer"
+	"Heis/pkg/types"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"time"
 )
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
 //!!!!!!!!!!!
-
-type HelloMsg struct {
-	Message string
-	Iter    int
-}
 
 func main() {
 	// Elevator id can be anything. Here we pass it on the command line, using
@@ -69,26 +64,16 @@ func main() {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	Tx := make(chan HelloMsg)
-	Rx := make(chan HelloMsg)
+	Tx := make(chan types.UdpMsg)
+	Rx := make(chan types.UdpMsg)
 
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
 	go bcast.Transmitter(16569, Tx)
 	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished)
+	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
-
-	// The example message. We just send one of these every second.
-	go func() {
-		helloMsg := HelloMsg{"Hello from " + id, 0}
-		for {
-			helloMsg.Iter++
-			Tx <- helloMsg
-			time.Sleep(1 * time.Second)
-		}
-	}()
 
 	fmt.Println("Started")
 	for {
@@ -98,7 +83,6 @@ func main() {
 			fmt.Printf("  Peers:    %q\n", p.Peers)
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
-
 		case a := <-Rx:
 			fmt.Printf("Received: %#v\n", a)
 		}
