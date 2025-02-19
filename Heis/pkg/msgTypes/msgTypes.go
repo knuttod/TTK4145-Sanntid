@@ -1,6 +1,10 @@
-package types
+package msgTypes
 
-import "Heis/pkg/elevio"
+import (
+	"Heis/pkg/elevio"
+	"Heis/pkg/fsm"
+)
+
 
 type UdpMsg struct {
 	Message        string

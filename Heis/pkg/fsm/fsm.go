@@ -3,7 +3,7 @@ package fsm
 import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/network/peers"
-	"Heis/pkg/types"
+	"Heis/pkg/msgTypes"
 	"fmt"
 	"log"
 )
@@ -40,7 +40,7 @@ type Elevator struct {
 	}
 }
 
-func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
+func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan msgTypes.UdpMsg, Rx chan msgTypes.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
 	// init state machine between floors
 	var elevator Elevator
 	fsm_init(&elevator)

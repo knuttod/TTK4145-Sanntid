@@ -8,7 +8,7 @@ import (
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/timer"
-	"Heis/pkg/types"
+	"Heis/pkg/msgTypes"
 	"flag"
 	"fmt"
 	"log"
@@ -64,8 +64,8 @@ func main() {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	Tx := make(chan types.UdpMsg)
-	Rx := make(chan types.UdpMsg)
+	Tx := make(chan msgTypes.UdpMsg)
+	Rx := make(chan msgTypes.UdpMsg)	//Kanskje ha buffer her. For å få inn meldinger fra flere heiser samtidig. 
 
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
