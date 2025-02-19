@@ -10,11 +10,11 @@ import (
 	"Heis/pkg/timer"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/elevator"
+	"Heis/pkg/message"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"time"
 )
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
@@ -22,16 +22,7 @@ import (
 
 
 
-func transmitState(e *elevator.Elevator, Tx chan msgTypes.UdpMsg, id string) {
-	elevatorStateMsg := msgTypes.ElevatorStateMsg{
-			Elevator: e,
-			Id:       id,
-		}
-	for {
-		Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
-		time.Sleep(10 * time.Millisecond)
-	}
-}
+
 
 
 func main() {
@@ -65,7 +56,7 @@ func main() {
 	// NumFloors := 4
 
 	var e elevator.Elevator
-	elevator.Elevator_init(&e, NumFloors, NumButtons)
+	elevator.Elevator_init(&e, NumFloors, NumButtons, id)
 
 	
 
@@ -85,32 +76,38 @@ func main() {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	Tx := make(chan msgTypes.UdpMsg)
-	Rx := make(chan msgTypes.UdpMsg)	//Kanskje ha buffer her. For å få inn meldinger fra flere heiser samtidig. 
+	stateTx := make(chan msgTypes.ElevatorStateMsg)
+	stateRx := make(chan msgTypes.ElevatorStateMsg)	
+
+	requestTx := make(chan msgTypes.ButtonPressMsg)
+	requestRx := make(chan msgTypes.ButtonPressMsg)	//Kanskje ha buffer her. For å få inn meldinger fra flere heiser samtidig. 
 
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
-	go bcast.Transmitter(16569, Tx)
-	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
+	go bcast.Transmitter(16569, stateTx)
+	go bcast.Receiver(16569, stateRx)
+	go bcast.Transmitter(16570, requestTx)
+	go bcast.Receiver(16570, requestRx)
+
+	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, requestTx, requestRx, peerTxEnable, peerUpdateCh)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
-	go transmitState(&e, Tx, id)
+	go message.TransmitState(&e, stateTx, id)
 
-	fmt.Println("Started")
-	for {
-		select {
-		case p := <-peerUpdateCh:
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-		case a := <-Rx:
-			fmt.Printf("Received: %#v\n", a)
-		}
-	}
+	// fmt.Println("Started")
+	// for {
+	// 	select {
+	// 	case p := <-peerUpdateCh:
+	// 		fmt.Printf("Peer update:\n")
+	// 		fmt.Printf("  Peers:    %q\n", p.Peers)
+	// 		fmt.Printf("  New:      %q\n", p.New)
+	// 		fmt.Printf("  Lost:     %q\n", p.Lost)
+	// 	case a := <-Rx:
+	// 		fmt.Printf("Received: %#v\n", a)
+	// 	}
+	// }
 
-	//	select {}
+	select {}
 
 }

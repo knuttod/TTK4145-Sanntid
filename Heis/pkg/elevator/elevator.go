@@ -25,6 +25,7 @@ type Elevator struct {
 	Requests   [][]bool
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
+	Id string
 
 	Config struct { //type?
 		ClearRequestVariant ClearRequestVariant
@@ -38,13 +39,14 @@ type DirnBehaviourPair struct {
 }
 
 
-func Elevator_init(e *Elevator, N_floors, N_buttons int) {
+func Elevator_init(e *Elevator, N_floors, N_buttons int, id string) {
 	// initialize the (*e) struct
 	(*e).Floor = -1
 	(*e).Dirn = elevio.MD_Stop
 	(*e).Behaviour = EB_Idle
 	(*e).Config.ClearRequestVariant = CV_InDirn
 	(*e).Config.DoorOpenDuration_s = 3.0
+	(*e).Id = id
 	(*e).Requests = make([][]bool, N_floors)
 	for i := range (*e).Requests {
 		(*e).Requests[i] = make([]bool, N_buttons)

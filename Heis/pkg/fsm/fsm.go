@@ -5,7 +5,7 @@ import (
 	"Heis/pkg/network/peers"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/elevator"
-	"fmt"
+	"Heis/pkg/message"
 	"log"
 )
 
@@ -41,7 +41,7 @@ const N_buttons = 3
 // 	}
 // }
 
-func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan msgTypes.UdpMsg, Rx chan msgTypes.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
+func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, requestTx chan msgTypes.ButtonPressMsg, requestRx chan msgTypes.ButtonPressMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate) {
 	// init state machine between floors
 
 	// elevatorStateMsg := msgTypes.ElevatorStateMsg{
@@ -50,6 +50,7 @@ func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors c
 	// }
 
 	// fsm_init(&elevator)
+	id := (*e).Id
 
 	//Kanskje ikke så robust, uten bruk av channelen
 	if elevio.GetFloor() == -1 {
@@ -57,14 +58,14 @@ func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors c
 	}
 
 	for {
-		fmt.Println("State: ", (*e).Behaviour)
-
 
 		select {
 		case button_input := <-drv_buttons:
 			// send button press message
 
-			requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
+			message.TransmitButtonPress(e, button_input.Floor, button_input.Button, requestTx, id)
+
+			requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
 			log.Println("drv_buttons: %v", button_input)
 		case current_floor := <-drv_floors:
 			floorArrival(e, current_floor, drv_doorTimerStart)
@@ -85,16 +86,17 @@ func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors c
 				log.Println("drv_doortimer timed out")
 			}
 
-		case msg := <-Rx:
-			// if msg.ButtonPressMsg != nil && msg.ButtonPressMsg.Id != id { // Ignore messages from itself
-			// 	log.Printf("Received remote button press: %+v\n", msg.ButtonPressMsg)
-			if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id { // Ignore messages from itself
+		case msg := <-requestRx:
+			if msg.Id != id { // Ignore messages from itself
+				log.Printf("Received remote button press: %+v\n", msg)
+			
+				//Act as if the button was pressed locally
+				requestButtonPress(e, msg.Floor, msg.Button, drv_doorTimerStart)
+			//if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id { // Ignore messages from itself
 				//log.Printf("Received remote button press: %+v\n", msg.ElevatorStateMsg)
-				// Act as if the button was pressed locally
-				// requestButtonPress(&elevator, msg.ButtonPressMsg.Floor, msg.ButtonPressMsg.Button, drv_doorTimerStart, Tx, id)
-				if msg.ElevatorStateMsg.Id == "elevator1" {
-					setAllLights(msg.ElevatorStateMsg.Elevator)
-				}
+				// if msg.ElevatorStateMsg.Id == "elevator1" {
+				// 	setAllLights(msg.ElevatorStateMsg.Elevator)
+				// }
 				//fmt.Println("Floor,", *msg.ElevatorStateMsg.Elevator.Floor)
 			}
 		}

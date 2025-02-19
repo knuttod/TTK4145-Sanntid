@@ -2,7 +2,6 @@ package fsm
 
 import (
 	"Heis/pkg/elevio"
-	"Heis/pkg/msgTypes"
 	"Heis/pkg/elevator"
 	//"fmt"
 )
@@ -27,7 +26,7 @@ func initBetweenFloors(e *elevator.Elevator) {
 	(*e).Behaviour = elevator.EB_Moving
 }
 
-func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, Tx chan msgTypes.UdpMsg, id string) {
+func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64) {
 	//print functions??
 	// buttonPressMsg := msgTypes.ButtonPressMsg{
 	// 	Floor:  btn_floor,
