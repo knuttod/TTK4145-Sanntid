@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"Heis/pkg/elevio"
+	"fmt"
 	//"fmt"
 )
 
@@ -127,7 +128,8 @@ func ShouldClearImmediately(e Elevator, btn_floor int, btn_type elevio.ButtonTyp
 	}
 }
 
-func ClearAtCurrentFloor(e Elevator) Elevator {
+func ClearAtCurrentFloor(e Elevator) (Elevator, int) {
+	var dirn_cleared = elevio.MD_Stop
 	switch e.Config.ClearRequestVariant {
 	case CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
@@ -137,16 +139,20 @@ func ClearAtCurrentFloor(e Elevator) Elevator {
 		e.Requests[e.Floor][elevio.BT_Cab] = false
 		switch e.Dirn {
 		case elevio.MD_Up:
+			e.Requests[e.Floor][elevio.BT_HallUp] = false
+			var dirn_cleared = elevio.MD_Up
 			if (!Above(e)) && (!e.Requests[e.Floor][elevio.BT_HallUp]) {
 				e.Requests[e.Floor][elevio.BT_HallDown] = false
+				var dirn_cleared = elevio.MD_Stop
 			}
-			e.Requests[e.Floor][elevio.BT_HallUp] = false
 
 		case elevio.MD_Down:
+			e.Requests[e.Floor][elevio.BT_HallDown] = false
+			var dirn_cleared = elevio.MD_Down
 			if (!Below(e)) && (!e.Requests[e.Floor][elevio.BT_HallDown]) {
 				e.Requests[e.Floor][elevio.BT_HallUp] = false
+				var dirn_cleared = elevio.MD_Stop
 			}
-			e.Requests[e.Floor][elevio.BT_HallDown] = false
 		// case elevio.MD_Stop:
 		// 	e.Requests[e.Floor][elevio.BT_HallUp] = false
 		// 	e.Requests[e.Floor][elevio.BT_HallDown] = false
@@ -154,10 +160,39 @@ func ClearAtCurrentFloor(e Elevator) Elevator {
 		default:
 			e.Requests[e.Floor][elevio.BT_HallUp] = false
 			e.Requests[e.Floor][elevio.BT_HallDown] = false
+			var dirn_cleared = elevio.MD_Stop
 			//e.Requests[e.Floor][elevio.BT_Cab] = false
 		}
 	default:
 
 	}
-	return e
+	fmt.Println(dirn_cleared)
+	return e, dirn_cleared
+}
+
+// Funker ikke som den skal den fjerner alt på samme etasje, tar ikke hensyn til rettning for øyeblikket.
+func ClearFloor(e *Elevator, floor int, Dirn elevio.MotorDirection) {
+	switch Dirn {
+	case elevio.MD_Up:
+		if (!Above(e)) && (!e.Requests[e.Floor][elevio.BT_HallUp]) { //trenger en workaround for Above()
+			e.Requests[floor][elevio.BT_HallDown] = false
+		}
+		e.Requests[floor][elevio.BT_HallUp] = false
+
+	case elevio.MD_Down:
+		if (!Below(e)) && (!e.Requests[e.Floor][elevio.BT_HallDown]) { // trenger en workaround for Below() også
+			e.Requests[floor][elevio.BT_HallUp] = false
+		}
+		e.Requests[floor][elevio.BT_HallDown] = false
+	// case elevio.MD_Stop:
+	// 	e.Requests[e.Floor][elevio.BT_HallUp] = false
+	// 	e.Requests[e.Floor][elevio.BT_HallDown] = false
+	// 	e.Requests[e.Floor][elevio.BT_Cab] = false
+	default:
+		e.Requests[floor][elevio.BT_HallUp] = false
+		e.Requests[floor][elevio.BT_HallDown] = false
+		//e.Requests[e.Floor][elevio.BT_Cab] = false
+	}
+
+	setAllLights(e)
 }

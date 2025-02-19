@@ -28,16 +28,18 @@ func initBetweenFloors(e *Elevator) {
 
 func requestButtonPress(e *Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, Tx chan types.UdpMsg, id string) {
 	//print functions??
-	buttonPressMsg := types.ButtonPressMsg{
-		Floor:  btn_floor,
-		Button: btn_type,
-		Id:     id,
-	}
+	if btn_type != elevio.BT_Cab {
+		buttonPressMsg := types.ButtonPressMsg{
+			Floor:  btn_floor,
+			Button: btn_type,
+			Id:     id,
+		}
 
-	// Retransmit to reduce redundancy
-	for i := 0; i < 3; i++ {
-		Tx <- types.UdpMsg{ButtonPressMsg: &buttonPressMsg}
-		time.Sleep(100 * time.Millisecond)
+		// Retransmit to reduce redundancy
+		for i := 0; i < 10; i++ {
+			Tx <- types.UdpMsg{ButtonPressMsg: &buttonPressMsg}
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 
 	switch (*e).Behaviour {
@@ -77,21 +79,29 @@ func requestButtonPress(e *Elevator, btn_floor int, btn_type elevio.ButtonType, 
 	setAllLights(e)
 }
 
-func floorArrival(e *Elevator, newFloor int, drv_doorTimer chan float64) {
+func floorArrival(e *Elevator, newFloor int, drv_doorTimer chan float64, Tx chan types.UdpMsg, id string) {
+	e.Floor = newFloor
+	elevio.SetFloorIndicator(e.Floor)
 
-	(*e).Floor = newFloor
-	elevio.SetFloorIndicator((*e).Floor)
-
-	switch (*e).Behaviour {
+	switch e.Behaviour {
 	case EB_Moving:
-		if ShouldStop((*e)) {
+		if ShouldStop(*e) {
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
-			(*e) = ClearAtCurrentFloor((*e))
-			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			//drv_doorTimer <- 0.0
+			*e, dirn_to_clear := ClearAtCurrentFloor(*e)
+			drv_doorTimer <- e.Config.DoorOpenDuration_s
 			setAllLights(e)
 			(*e).Behaviour = EB_DoorOpen
+
+			// Broadcast clear floor message
+			clearFloorMsg := types.ClearFloorMsg{
+				Floor: newFloor,
+				Dirn:  e.Dirn,
+				Id:    id,
+			}
+			for i := 0; i < 10; i++ {
+				Tx <- types.UdpMsg{ClearFloorMsg: &clearFloorMsg}
+			}
 		}
 	}
 }
