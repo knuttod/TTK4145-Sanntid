@@ -60,7 +60,7 @@ func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, dr
 			requestButtonPress(&elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
 			log.Println("drv_buttons: %v", button_input)
 		case current_floor := <-drv_floors:
-			floorArrival(&elevator, current_floor, drv_doorTimerStart)
+			floorArrival(&elevator, current_floor, drv_doorTimerStart, Tx, id)
 			// Send clear floor message
 
 			log.Println("drv_floors: %v", current_floor)
@@ -79,10 +79,15 @@ func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, dr
 			}
 
 		case msg := <-Rx:
-			if msg.ButtonPressMsg != nil && msg.ButtonPressMsg.Id != id { // Ignore messages from itself
+			if msg.ButtonPressMsg != nil && msg.ButtonPressMsg.Id != id {
 				log.Printf("Received remote button press: %+v\n", msg.ButtonPressMsg)
-				// Act as if the button was pressed locally
 				requestButtonPress(&elevator, msg.ButtonPressMsg.Floor, msg.ButtonPressMsg.Button, drv_doorTimerStart, Tx, id)
+			}
+			if msg.ClearFloorMsg != nil && msg.ClearFloorMsg.Id != id {
+				log.Printf("Received remote clear floor: %+v\n", msg.ClearFloorMsg)
+
+				// Funker ikke som den skal den fjerner alt på samme etasje, tar ikke hensyn til rettning for øyeblikket.
+				ClearFloor(&elevator, msg.ClearFloorMsg.Floor)
 			}
 		}
 	}

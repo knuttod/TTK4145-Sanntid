@@ -5,11 +5,19 @@ import "Heis/pkg/elevio"
 type UdpMsg struct {
 	Message        string
 	Iter           int
-	ButtonPressMsg *ButtonPressMsg // Pointer to ButtonPressMsg, nil if not a button press
+	ButtonPressMsg *ButtonPressMsg
+	ClearFloorMsg  *ClearFloorMsg
 }
 
 type ButtonPressMsg struct {
 	Floor  int
 	Button elevio.ButtonType
-	Id     string // Identifier of the elevator that pressed the button
+	Id     string
+}
+
+type ClearFloorMsg struct {
+	Floor int
+	// Should also include the direction to clear.
+	Dirn elevio.MotorDirection
+	Id   string
 }
