@@ -2,14 +2,14 @@ package msgTypes
 
 import (
 	"Heis/pkg/elevio"
-	"Heis/pkg/fsm"
+	"Heis/pkg/elevator"
 )
 
 
 type UdpMsg struct {
 	Message        string
 	Iter           int
-	ButtonPressMsg *ButtonPressMsg // Pointer to ButtonPressMsg, nil if not a button press
+	ElevatorStateMsg *ElevatorStateMsg // Pointer to ButtonPressMsg, nil if not a button press
 }
 
 type ButtonPressMsg struct {
@@ -17,3 +17,9 @@ type ButtonPressMsg struct {
 	Button elevio.ButtonType
 	Id     string // Identifier of the elevator that pressed the button
 }
+
+type ElevatorStateMsg struct {
+	Elevator *elevator.Elevator
+	Id       string
+}
+

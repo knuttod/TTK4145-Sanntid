@@ -9,14 +9,30 @@ import (
 	"Heis/pkg/network/peers"
 	"Heis/pkg/timer"
 	"Heis/pkg/msgTypes"
+	"Heis/pkg/elevator"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
 //!!!!!!!!!!!
+
+
+
+func transmitState(e *elevator.Elevator, Tx chan msgTypes.UdpMsg, id string) {
+	elevatorStateMsg := msgTypes.ElevatorStateMsg{
+			Elevator: e,
+			Id:       id,
+		}
+	for {
+		Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 
 func main() {
 	// Elevator id can be anything. Here we pass it on the command line, using
@@ -45,8 +61,13 @@ func main() {
 	}
 	// Use the loaded configuration
 	NumFloors := cfg.NumFloors
-	// NumButtons := cfg.NumButtons
+	NumButtons := cfg.NumButtons
 	// NumFloors := 4
+
+	var e elevator.Elevator
+	elevator.Elevator_init(&e, NumFloors, NumButtons)
+
+	
 
 	elevio.Init("localhost:"+port, NumFloors)
 
@@ -72,8 +93,10 @@ func main() {
 	go bcast.Transmitter(16569, Tx)
 	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
+	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
+
+	go transmitState(&e, Tx, id)
 
 	fmt.Println("Started")
 	for {
