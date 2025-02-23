@@ -15,7 +15,7 @@ import (
 type ButtonPressMsg struct {
 	Message        string
 	Iter           int
-	Floor  int
+	Floor  		   int
 	Button elevio.ButtonType
 	Id     string // Identifier of the elevator that pressed the button
 }
@@ -23,7 +23,7 @@ type ButtonPressMsg struct {
 type ElevatorStateMsg struct {
 	Message        string
 	Iter           int
-	Elevator *elevator.Elevator
+	Elevator elevator.Elevator
 	Id       string
 }
 

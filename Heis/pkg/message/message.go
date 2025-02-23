@@ -10,7 +10,7 @@ import (
 
 func TransmitState(e *elevator.Elevator, Tx chan msgTypes.ElevatorStateMsg, id string) {
 	elevatorStateMsg := msgTypes.ElevatorStateMsg{
-			Elevator: e,
+			Elevator: *e,
 			Id:       id,
 		}
 	for {

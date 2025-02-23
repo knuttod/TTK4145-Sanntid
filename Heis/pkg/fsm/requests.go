@@ -14,7 +14,7 @@ import (
 func Above(e elevator.Elevator) bool {
 	for f := e.Floor + 1; f < N_floors; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.Requests[f][btn] {
+			if e.LocalOrders[f][btn] == 2 {
 				return true
 			}
 		}
@@ -26,7 +26,7 @@ func Above(e elevator.Elevator) bool {
 func Below(e elevator.Elevator) bool {
 	for f := 0; f < e.Floor; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.Requests[f][btn] {
+			if e.LocalOrders[f][btn] == 2 {
 				return true
 			}
 		}
@@ -36,7 +36,7 @@ func Below(e elevator.Elevator) bool {
 
 func Here(e elevator.Elevator) bool {
 	for btn := 0; btn < N_buttons; btn++ {
-		if e.Requests[e.Floor][btn] {
+		if e.LocalOrders[e.Floor][btn] == 2{
 			return true
 		}
 	}
@@ -86,14 +86,14 @@ func chooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
 func ShouldStop(e elevator.Elevator) bool {
 	switch e.Dirn {
 	case elevio.MD_Down:
-		if (e.Requests[e.Floor][elevio.BT_HallDown]) || (e.Requests[e.Floor][elevio.BT_Cab]) || (!Below(e)) {
+		if (e.LocalOrders[e.Floor][elevio.BT_HallDown] == 2) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == 2) || (!Below(e)) {
 			return true
 		} else {
 			return false
 		}
 
 	case elevio.MD_Up:
-		if (e.Requests[e.Floor][elevio.BT_HallUp]) || (e.Requests[e.Floor][elevio.BT_Cab]) || (!Above(e)) {
+		if (e.LocalOrders[e.Floor][elevio.BT_HallUp] == 2) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == 2) || (!Above(e)) {
 			return true
 		} else {
 			return false
@@ -128,34 +128,36 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevio.
 	}
 }
 
+
+// Få inn funksjonaliltet for å sende eller opdatere globale orders når denne blir kjørt
 func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 	switch e.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
-			e.Requests[e.Floor][btn] = false
+			e.LocalOrders[e.Floor][btn] = 0
 		}
 	case elevator.CV_InDirn:
-		e.Requests[e.Floor][elevio.BT_Cab] = false
+		e.LocalOrders[e.Floor][elevio.BT_Cab] = 0
 		switch e.Dirn {
 		case elevio.MD_Up:
-			if (!Above(e)) && (!e.Requests[e.Floor][elevio.BT_HallUp]) {
-				e.Requests[e.Floor][elevio.BT_HallDown] = false
+			if (!Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] != 2) {
+				e.LocalOrders[e.Floor][elevio.BT_HallDown] = 0
 			}
-			e.Requests[e.Floor][elevio.BT_HallUp] = false
+			e.LocalOrders[e.Floor][elevio.BT_HallUp] = 0
 
 		case elevio.MD_Down:
-			if (!Below(e)) && (!e.Requests[e.Floor][elevio.BT_HallDown]) {
-				e.Requests[e.Floor][elevio.BT_HallUp] = false
+			if (!Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] != 2) {
+				e.LocalOrders[e.Floor][elevio.BT_HallUp] = 0
 			}
-			e.Requests[e.Floor][elevio.BT_HallDown] = false
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = 0
 		// case elevio.MD_Stop:
-		// 	e.Requests[e.Floor][elevio.BT_HallUp] = false
-		// 	e.Requests[e.Floor][elevio.BT_HallDown] = false
-		// 	e.Requests[e.Floor][elevio.BT_Cab] = false
+		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = 0
+		// 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = 0
+		// 	e.LocalOrders[e.Floor][elevio.BT_Cab] = 0
 		default:
-			e.Requests[e.Floor][elevio.BT_HallUp] = false
-			e.Requests[e.Floor][elevio.BT_HallDown] = false
-			//e.Requests[e.Floor][elevio.BT_Cab] = false
+			e.LocalOrders[e.Floor][elevio.BT_HallUp] = 0
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = 0
+			//e.LocalOrders[e.Floor][elevio.BT_Cab] = 0
 		}
 	default:
 

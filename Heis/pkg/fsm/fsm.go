@@ -1,12 +1,13 @@
 package fsm
 
 import (
-	"Heis/pkg/elevio"
-	"Heis/pkg/network/peers"
-	"Heis/pkg/msgTypes"
 	"Heis/pkg/elevator"
-	"Heis/pkg/message"
+	"Heis/pkg/elevio"
+	//"Heis/pkg/message"
+	"Heis/pkg/msgTypes"
+	"Heis/pkg/network/peers"
 	"log"
+	"fmt"
 )
 
 // jonas
@@ -41,7 +42,7 @@ const N_buttons = 3
 // 	}
 // }
 
-func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, requestTx chan msgTypes.ButtonPressMsg, requestRx chan msgTypes.ButtonPressMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate) {
+func Fsm(e *elevator.Elevator, order chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, requestTx chan msgTypes.ButtonPressMsg, requestRx chan msgTypes.ButtonPressMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate) {
 	// init state machine between floors
 
 	// elevatorStateMsg := msgTypes.ElevatorStateMsg{
@@ -50,7 +51,6 @@ func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors c
 	// }
 
 	// fsm_init(&elevator)
-	id := (*e).Id
 
 	//Kanskje ikke så robust, uten bruk av channelen
 	if elevio.GetFloor() == -1 {
@@ -58,15 +58,20 @@ func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors c
 	}
 
 	for {
-
 		select {
-		case button_input := <-drv_buttons:
+		case button_input := <-order:
 			// send button press message
 
-			message.TransmitButtonPress(e, button_input.Floor, button_input.Button, requestTx, id)
+			// send unconfirmed message to OrderMerger
+			// When order is confirmed and is assigned from cost function calculations to this elevator send to request button press
 
-			requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
+			// Need a way to tell others order is done
+
+			// message.TransmitButtonPress(e, button_input.Floor, button_input.Button, requestTx, (*e).Id)
+
 			log.Println("drv_buttons: %v", button_input)
+			fmt.Println("Button input: ", button_input)
+			requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
 		case current_floor := <-drv_floors:
 			floorArrival(e, current_floor, drv_doorTimerStart)
 			// Send clear floor message
@@ -82,23 +87,27 @@ func Fsm(e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors c
 
 		case <-drv_doorTimerFinished:
 			if !(*e).Obstructed {
-				DoorTimeout(e, drv_doorTimerStart)
 				log.Println("drv_doortimer timed out")
+				DoorTimeout(e, drv_doorTimerStart)
 			}
 
 		case msg := <-requestRx:
-			if msg.Id != id { // Ignore messages from itself
+			if msg.Id != (*e).Id { // Ignore messages from itself
 				log.Printf("Received remote button press: %+v\n", msg)
-			
+				SetAllLightsOrder((*e).GlobalOrders, e)
 				//Act as if the button was pressed locally
-				requestButtonPress(e, msg.Floor, msg.Button, drv_doorTimerStart)
+				//requestButtonPress(e, msg.Floor, msg.Button, drv_doorTimerStart)
+
+			} 
+			
+				
 			//if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id { // Ignore messages from itself
 				//log.Printf("Received remote button press: %+v\n", msg.ElevatorStateMsg)
 				// if msg.ElevatorStateMsg.Id == "elevator1" {
 				// 	setAllLights(msg.ElevatorStateMsg.Elevator)
 				// }
 				//fmt.Println("Floor,", *msg.ElevatorStateMsg.Elevator.Floor)
-			}
+			
 		}
 	}
 }
