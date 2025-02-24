@@ -24,18 +24,24 @@ func GlobalOrderMerger(e *elevator.Elevator, stateRX, stateTx chan msgTypes.Elev
 			
 			external_elevator = a.Elevator
 			if a.Id != (*e).Id { //ignores messages from itself and if orders are equal
+				//fmt.Println(a.Id)
 				for floor := range (*e).GlobalOrders {
 					for btn := range (*e).GlobalOrders[floor] {
 						// If cyclic counter is 1 behind external it can update
 						currentState = (*e).GlobalOrders[floor][btn]
 						updateState = external_elevator.GlobalOrders[floor][btn]
+						//fmt.Println(updateState - currentState)
 						
 						if updateState - currentState == 1 || (updateState == 0 && currentState == 2) {
 							(*e).GlobalOrders[floor][btn] = updateState
 							equal = false
+							fmt.Println("State updated")
 						}
 					}
 				}
+				// ExternalElevators[a.Elevator.Index] = external_elevator
+				// ExternalElevators[(*e).Index] = (*e)
+
 			
 				// if true {//!equal {
 				// 	// Må kanskje fikse funksjon for å få denne enkel eller endre på funksjonen
@@ -58,14 +64,18 @@ func GlobalOrderMerger(e *elevator.Elevator, stateRX, stateTx chan msgTypes.Elev
 
 			if updateState - currentState == 1 || (updateState == 0 && currentState == 2) {
 				(*e).GlobalOrders[a.Action.Floor][a.Action.Button] = updateState
+				fmt.Println("Local state update")
 				equal = false
 			}
-			OrderDistributer(e, localOrderOut)
+			//OrderDistributer(e, localOrderOut)
 		}
 
 		if !equal {
+			fmt.Println("Light update")
 			fsm.SetAllLightsOrder((*e).GlobalOrders, e)
+			OrderDistributer(e, localOrderOut)
 		}
+
 		
 
 	}
@@ -128,6 +138,19 @@ func GlobalOrderSynced(e *elevator.Elevator, state, floor, btn int) bool { //ege
 	// 	check if all active elevators have the order synced
 	// }
 	//return true or false
+
+	// for i := range (*e).GlobalOrders {
+	// 	for j := range (*e).GlobalOrders[i] {
+	// 		for k := range ExternalElevators{
+	// 			fmt.Println(k)
+	// 			fmt.Println(j)
+	// 			fmt.Println(ExternalElevators[k])
+	// 			// if (*e).GlobalOrders[i][j] != ExternalElevators[k].GlobalOrders[i][j] {
+	// 			// 	return false
+	// 			// }
+	// 		}
+	// 	}
+	// }
 	return true
 }
 
@@ -146,7 +169,6 @@ func OrderDistributer(e *elevator.Elevator, LocalOrderOut chan elevio.ButtonEven
 					if GlobalOrderSynced(e, state, floor, btn) && state == 1 {
 						(*e).GlobalOrders[floor][(*e).Index + 1] = 2
 						// send button input to FSM
-						fmt.Println("send")
 						LocalOrderOut <- elevio.ButtonEvent{Floor : floor, Button : elevio.ButtonType(btn)}
 					}
 				} else {
@@ -154,7 +176,6 @@ func OrderDistributer(e *elevator.Elevator, LocalOrderOut chan elevio.ButtonEven
 					if GlobalOrderSynced(e, state, floor, btn) && state == 1 {
 						(*e).GlobalOrders[floor][btn] = 2
 						// send button input to FSM
-						fmt.Println("send2")
 						LocalOrderOut <- elevio.ButtonEvent{Floor : floor, Button : elevio.ButtonType(btn)}
 					}
 				}
@@ -168,14 +189,13 @@ func LocalButtonPressHandler (e *elevator.Elevator, drv_buttons chan elevio.Butt
 	for {
 		
 		button_input := <- drv_buttons
-		fmt.Println("Floor:", button_input.Floor)
-		fmt.Println("Button:", button_input.Button)
 		Order := elevator.Order { 
 			State : 1,
 			Action: button_input,
 		}
 		
 		// Do not need this, but does not create any problems i think? May be bad code quality 
+		// May be wrong if orders is to be assigned to another elevator
 		(*e).LocalOrders[button_input.Floor][button_input.Button] = 1
 
 		localRequest <- Order
