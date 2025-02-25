@@ -12,42 +12,19 @@ import (
 const N_floors = 4
 const N_buttons = 3
 
-type ElevatorBehaviour int
+func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
 
-const (
-	EB_Idle ElevatorBehaviour = iota
-	EB_DoorOpen
-	EB_Moving
-)
+	remoteElevators := make(map[string]types.Elevator)
+	go broadcastElevatoStates(elevator, id, Tx)
+	go updateRemoteElevators(Rx, remoteElevators, elevator, id) // Pass local elevator
+	go monitorRemoteCabCalls(elevator, &remoteElevators)
 
-type ClearRequestVariant int
-
-const (
-	CV_ALL ClearRequestVariant = iota
-	CV_InDirn
-)
-
-type Elevator struct {
-	Floor      int
-	Dirn       elevio.MotorDirection
-	Requests   [][]bool
-	Behaviour  ElevatorBehaviour
-	Obstructed bool
-
-	Config struct { //type?
-		ClearRequestVariant ClearRequestVariant
-		DoorOpenDuration_s  float64
-	}
-}
-
-func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
 	// init state machine between floors
-	var elevator Elevator
-	fsm_init(&elevator)
+	fsm_init(elevator)
 
 	//Kanskje ikke så robust, uten bruk av channelen
 	if elevio.GetFloor() == -1 {
-		initBetweenFloors(&elevator)
+		initBetweenFloors(elevator)
 	}
 
 	for {
@@ -57,10 +34,10 @@ func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, dr
 		case button_input := <-drv_buttons:
 			// send button press message
 
-			requestButtonPress(&elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
+			requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
 			log.Println("drv_buttons: %v", button_input)
 		case current_floor := <-drv_floors:
-			floorArrival(&elevator, current_floor, drv_doorTimerStart, Tx, id)
+			floorArrival(elevator, current_floor, drv_doorTimerStart, Tx, id)
 			// Send clear floor message
 
 			log.Println("drv_floors: %v", current_floor)
@@ -74,20 +51,24 @@ func Fsm(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, dr
 
 		case <-drv_doorTimerFinished:
 			if !elevator.Obstructed {
-				DoorTimeout(&elevator, drv_doorTimerStart)
+				DoorTimeout(elevator, drv_doorTimerStart)
 				log.Println("drv_doortimer timed out")
 			}
 
 		case msg := <-Rx:
 			if msg.ButtonPressMsg != nil && msg.ButtonPressMsg.Id != id {
 				log.Printf("Received remote button press: %+v\n", msg.ButtonPressMsg)
-				requestButtonPress(&elevator, msg.ButtonPressMsg.Floor, msg.ButtonPressMsg.Button, drv_doorTimerStart, Tx, id)
+				requestButtonPress(elevator, msg.ButtonPressMsg.Floor, msg.ButtonPressMsg.Button, drv_doorTimerStart, Tx, id)
 			}
 			if msg.ClearFloorMsg != nil && msg.ClearFloorMsg.Id != id {
 				log.Printf("Received remote clear floor: %+v\n", msg.ClearFloorMsg)
 
 				// Funker ikke som den skal den fjerner alt på samme etasje, tar ikke hensyn til rettning for øyeblikket.
-				ClearFloor(&elevator, msg.ClearFloorMsg.Floor)
+				//				ClearFloor(&elevator, msg.ClearFloorMsg.Floor, msg.ClearFloorMsg.Dirn)
+			}
+			if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id {
+				log.Printf("Received remote elevator state: %+v\n", msg.ElevatorStateMsg)
+				remoteElevators[msg.ElevatorStateMsg.Id] = msg.ElevatorStateMsg.Elevator
 			}
 		}
 	}
