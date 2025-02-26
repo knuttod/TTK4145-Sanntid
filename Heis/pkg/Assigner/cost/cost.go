@@ -100,7 +100,11 @@ func requestShouldStop(elev config.DistributorElevator) bool {
 	default:
 		return true
 	}
-}
+}None      RequestState = 0
+Order     RequestState = 1
+Comfirmed RequestState = 2
+Complete  RequestState = 3
+)
 
 func requestChooseDirection(elev *config.DistributorElevator) {
 	switch elev.Dir {

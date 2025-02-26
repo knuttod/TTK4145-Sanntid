@@ -37,56 +37,57 @@ const ElevatorStuckToleranceSec = 5
 const ReconnectTimerSec = 3
 const LocalElevator = 0
 
-type Direction int
 
-const (
-	Up   Direction = 1
-	Down Direction = -1
-	Stop Direction = 0
-)
+// type Direction int
 
-type RequestState int
+// const (
+// 	Up   Direction = 1
+// 	Down Direction = -1
+// 	Stop Direction = 0
+// )
 
-const (
-	None      RequestState = 0
-	Order     RequestState = 1
-	Comfirmed RequestState = 2
-	Complete  RequestState = 3
-)
+// type RequestState int
 
-type Behaviour int
+// const (
+// 	None      RequestState = 0
+// 	Order     RequestState = 1
+// 	Comfirmed RequestState = 2
+// 	Complete  RequestState = 3
+// )
 
-const (
-	Idle        Behaviour = 0
-	DoorOpen    Behaviour = 1
-	Moving      Behaviour = 2
-	Unavailable Behaviour = 3
-)
+// type Behaviour int
 
-type ButtonType int
+// const (
+// 	Idle        Behaviour = 0
+// 	DoorOpen    Behaviour = 1
+// 	Moving      Behaviour = 2
+// 	Unavailable Behaviour = 3
+// )
 
-const (
-	HallUp   ButtonType = 0
-	HallDown ButtonType = 1
-	Cab      ButtonType = 2
-)
+// type ButtonType int
 
-type Request struct {
-	Floor  int
-	Button ButtonType
-}
+// const (
+// 	HallUp   ButtonType = 0
+// 	HallDown ButtonType = 1
+// 	Cab      ButtonType = 2
+// )
 
-type DistributorElevator struct {
-	ID       string
-	Floor    int
-	Dir      Direction
-	Requests [][]RequestState
-	Behave   Behaviour
-}
+// type Request struct {
+// 	Floor  int
+// 	Button ButtonType
+// }
 
-type CostRequest struct {
-	Id         string
-	Cost       int
-	AssignedId string
-	Req        Request
-}
+// type DistributorElevator struct {
+// 	ID       string
+// 	Floor    int
+// 	Dir      Direction
+// 	Requests [][]RequestState
+// 	Behave   Behaviour
+// }
+
+// type CostRequest struct {
+// 	Id         string
+// 	Cost       int
+// 	AssignedId string
+// 	Req        Request
+// }

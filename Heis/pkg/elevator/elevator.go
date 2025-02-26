@@ -5,10 +5,6 @@ import (
 	"strconv"
 )
 
-
-
-
-
 type ElevatorBehaviour int
 
 const (
@@ -22,6 +18,24 @@ type ClearRequestVariant int
 const (
 	CV_ALL ClearRequestVariant = iota
 	CV_InDirn
+)
+
+type RequestState int
+
+const (
+	None      RequestState = 0
+	Order     RequestState = 1
+	Comfirmed RequestState = 2
+	Complete  RequestState = 3
+)
+
+type Behaviour int
+
+const (
+	Idle        Behaviour = 0
+	DoorOpen    Behaviour = 1
+	Moving      Behaviour = 2
+	Unavailable Behaviour = 3
 )
 
 type Elevator struct {
@@ -41,9 +55,24 @@ type Elevator struct {
 	}
 }
 
-type Order struct {
-	State int
-	Action elevio.ButtonEvent 
+type DistributorElevator struct {
+	ID       string
+	Floor    int
+	Dir      Direction
+	Requests [][]RequestState
+	Behave   Behaviour
+}
+
+type Request struct {
+	Floor  int
+	Button elevio.ButtonType
+}
+
+type CostRequest struct {
+	Id         string
+	Cost       int
+	AssignedId string
+	Req        Request
 }
 
 type DirnBehaviourPair struct {
