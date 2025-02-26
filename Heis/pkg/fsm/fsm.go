@@ -14,7 +14,7 @@ import (
 const N_floors = 4
 const N_buttons = 3
 
-func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
+func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, elevatorStateCh chan types.ElevatorStateMsg, id string) {
 
 	remoteElevators := make(map[string]elevator.Elevator)
 
@@ -67,8 +67,16 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 				log.Println("drv_doortimer timed out")
 				DoorTimeout(e, drv_doorTimerStart)
 			}
-
-		case msg := <-Rx:
+		case elevatorState := <-elevatorStateCh:
+			remoteElevators[elevatorState.Id] = elevatorState.Elevator
+			// fmt.Println("Updated remoteElevators for ID:", elevatorState.Id)
+			// Try merging requests
+			remoteElevator, exists := remoteElevators[elevatorState.Id]
+			if exists {
+				log.Println("Merging requests for elevator:", elevatorState.Id)
+				mergeRequests(elevator, remoteElevator)
+			}
+			// case msg := <-Rx:
 			// if msg.ButtonPressMsg != nil && msg.ButtonPressMsg.Id != id {
 			// 	log.Printf("Received remote button press: %+v\n", msg.ButtonPressMsg)
 			// 	// requestButtonPress(elevator, msg.ButtonPressMsg.Floor, msg.ButtonPressMsg.Button, drv_doorTimerStart, Tx, id)
@@ -79,35 +87,35 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 			// 	// Funker ikke som den skal den fjerner alt på samme etasje, tar ikke hensyn til rettning for øyeblikket.
 			// 	//				ClearFloor(&elevator, msg.ClearFloorMsg.Floor, msg.ClearFloorMsg.Dirn)
 			// }
-			if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id {
-				log.Printf("Received remote elevator state: %+v\n", msg.ElevatorStateMsg)
+			// if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id {
+			// 	log.Printf("Received remote elevator state: %+v\n", msg.ElevatorStateMsg)
 
-				// **Check if the remote elevator had active requests before merging**
-				hasRequests := false
-				for _, row := range msg.ElevatorStateMsg.Elevator.Requests {
-					for _, req := range row {
-						if req {
-							hasRequests = true
-							break
-						}
-					}
-				}
-				if !hasRequests {
-					log.Println("Warning: Received an elevator state with no requests!")
-				}
+			// 	// **Check if the remote elevator had active requests before merging**
+			// 	hasRequests := false
+			// 	for _, row := range msg.ElevatorStateMsg.Elevator.Requests {
+			// 		for _, req := range row {
+			// 			if req {
+			// 				hasRequests = true
+			// 				break
+			// 			}
+			// 		}
+			// 	}
+			// if !hasRequests {
+			// 	log.Println("Warning: Received an elevator state with no requests!")
+			// }
 
-				remoteElevators[msg.ElevatorStateMsg.Id] = msg.ElevatorStateMsg.Elevator
+			// remoteElevators[msg.] = msg.ElevatorStateMsg.Elevator
 
-				// Try merging requests
-				remoteElevator, exists := remoteElevators[msg.ElevatorStateMsg.Id]
-				if exists {
-					log.Println("Merging requests for elevator:", msg.ElevatorStateMsg.Id)
-					mergeRequests(&elevator.Requests, remoteElevator.Requests)
+			// // Try merging requests
+			// remoteElevator, exists := remoteElevators[msg.ElevatorStateMsg.Id]
+			// if exists {
+			// 	log.Println("Merging requests for elevator:", msg.ElevatorStateMsg.Id)
+			// 	mergeRequests(elevator, remoteElevator)
 
-				} else {
-					log.Println("No remote elevator state found for ID:", msg.ElevatorStateMsg.Id)
-				}
-			}
+			// } else {
+			// 	log.Println("No remote elevator state found for ID:", msg.ElevatorStateMsg.Id)
+			// }
+			// }
 
 		case msg := <-requestRx:
 			if msg.Id != (*e).Id { // Ignore messages from itself

@@ -199,18 +199,19 @@ func SetAllLightsOrder(Orders [][]int, e *elevator.Elevator) {
 // }
 
 // DEBUG VERSION Merge does not work but the sending of the struct works atm the elevator does not react to its states changing, maby need a queue of requests handled by a goroutine?
-func mergeRequests(local *[][]bool, remote [][]bool) {
+func mergeRequests(local *types.Elevator, remote types.Elevator) {
 	fmt.Println("Copying remote requests for debugging:")
 
-	// Copy all requests from remote to local
-	for floor := 0; floor < len(*local); floor++ {
-		for btn := 0; btn < len((*local)[floor]); btn++ {
-			(*local)[floor][btn] = remote[floor][btn] // Directly copying instead of merging
-			if remote[floor][btn] {
-				fmt.Printf("Copied request at floor %d, button %d\n", floor, btn)
-			}
-		}
-	}
+	local.Requests = remote.Requests
+	setAllLights(local)
 
 	fmt.Println("Local requests after copying:", *local)
+}
+
+func sendStates(local *types.Elevator, remote *types.Elevator, stateUpdated chan bool) {
+	for {
+		if local != remote {
+			stateUpdated <- true
+		}
+	}
 }

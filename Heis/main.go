@@ -79,6 +79,7 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
+	elevatorStateCh := make(chan types.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 	stateTx := make(chan msgTypes.ElevatorStateMsg)
 	stateRx := make(chan msgTypes.ElevatorStateMsg)	
@@ -87,17 +88,11 @@ func main() {
 	requestRx := make(chan msgTypes.ButtonPressMsg)	//Kanskje ha buffer her. For å få inn meldinger fra flere heiser samtidig. 
 
 	go peers.Transmitter(15647, id, peerTxEnable, &elevator)
-	go peers.Receiver(15647, peerUpdateCh)
+	go peers.Receiver(15647, peerUpdateCh, elevatorStateCh)
+	go bcast.Transmitter(16569, Tx)
+	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
-	go bcast.Transmitter(16569, stateTx)
-	go bcast.Receiver(16569, stateRx)
-	go bcast.Transmitter(16570, requestTx)
-	go bcast.Receiver(16570, requestRx)
-
-	LocalOrderRequest := make(chan elevator.Order)
-	LocalOrderTask := make(chan elevio.ButtonEvent)
-
+	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, elevatorStateCh, id)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
 	
