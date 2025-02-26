@@ -4,7 +4,7 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/types"
 
-	//	"fmt"
+	"fmt"
 	"time"
 )
 
@@ -29,19 +29,6 @@ func initBetweenFloors(e *types.Elevator) {
 
 func requestButtonPress(e *types.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, Tx chan types.UdpMsg, id string) {
 	//print functions??
-	if btn_type != elevio.BT_Cab {
-		buttonPressMsg := types.ButtonPressMsg{
-			Floor:  btn_floor,
-			Button: btn_type,
-			Id:     id,
-		}
-
-		// Retransmit to reduce redundancy
-		for i := 0; i < 10; i++ {
-			Tx <- types.UdpMsg{ButtonPressMsg: &buttonPressMsg}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
 
 	switch (*e).Behaviour {
 	case types.EB_DoorOpen:
@@ -77,6 +64,21 @@ func requestButtonPress(e *types.Elevator, btn_floor int, btn_type elevio.Button
 		}
 
 	}
+
+	// **Log current state before sending**
+	fmt.Printf("Elevator %s Requests before sending: %+v\n", id, e.Requests)
+
+	elevatorStateMsg := types.ElevatorStateMsg{
+		Elevator: *e,
+		Id:       id,
+	}
+
+	// Retransmit to reduce redundancy
+	for i := 0; i < 10; i++ {
+		Tx <- types.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	setAllLights(e)
 }
 
@@ -94,15 +96,20 @@ func floorArrival(e *types.Elevator, newFloor int, drv_doorTimer chan float64, T
 			setAllLights(e)
 			(*e).Behaviour = types.EB_DoorOpen
 
-			// Broadcast clear floor message
-			clearFloorMsg := types.ClearFloorMsg{
-				Floor: newFloor,
-				Dirn:  e.Dirn,
-				Id:    id,
+			// **Log current state before sending**
+			fmt.Printf("Elevator %s Requests before sending: %+v\n", id, e.Requests)
+
+			elevatorStateMsg := types.ElevatorStateMsg{
+				Elevator: *e,
+				Id:       id,
 			}
+
+			// Retransmit to reduce redundancy
 			for i := 0; i < 10; i++ {
-				Tx <- types.UdpMsg{ClearFloorMsg: &clearFloorMsg}
+				Tx <- types.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
+				time.Sleep(10 * time.Millisecond)
 			}
+
 		}
 	}
 }
@@ -148,66 +155,41 @@ func setAllLights(e *types.Elevator) {
 	}
 }
 
-func clearCabIfOtherCleared(e *types.Elevator, floor int) {
-	if e.Requests[floor][elevio.BT_Cab] {
-		e.Requests[floor][elevio.BT_Cab] = false
-		setAllLights(e) // Update lights
-	}
-}
+// func mergeRequests(local *[][]bool, remote [][]bool) {
+// 	for floor := 0; floor < len(*local); floor++ {
+// 		for btn := 0; btn < len((*local)[floor]); btn++ {
+// 			// Merge requests: if either elevator has requested this floor/button, keep it.
+// 			(*local)[floor][btn] = (*local)[floor][btn] || remote[floor][btn]
+// 		}
+// 	}
+// }
 
-func monitorRemoteCabCalls(elevator *types.Elevator, remoteElevators *map[string]types.Elevator) {
-	for {
-		time.Sleep(100 * time.Millisecond) // Check periodically
+// func mergeRequests(local *[][]bool, remote [][]bool) {
+// 	fmt.Println("Merging requests:")
+// 	for floor := 0; floor < len(*local); floor++ {
+// 		for btn := 0; btn < len((*local)[floor]); btn++ {
+// 			oldValue := (*local)[floor][btn]
+// 			(*local)[floor][btn] = (*local)[floor][btn] || remote[floor][btn]
+// 			if (*local)[floor][btn] != oldValue {
+// 				fmt.Printf("Merged request at floor %d, button %d\n", floor, btn)
+// 			}
+// 		}
+// 	}
+// }
 
-		for _, remote := range *remoteElevators {
-			for floor := 0; floor < N_floors; floor++ {
-				// If local elevator has a cab request, but another elevator has cleared it
-				if elevator.Requests[floor][elevio.BT_Cab] && !remote.Requests[floor][elevio.BT_Cab] {
-					clearCabIfOtherCleared(elevator, floor)
-				}
+// DEBUG VERSION Merge does not work but the sending of the struct works atm the elevator does not react to its states changing, maby need a queue of requests handled by a goroutine?
+func mergeRequests(local *[][]bool, remote [][]bool) {
+	fmt.Println("Copying remote requests for debugging:")
+
+	// Copy all requests from remote to local
+	for floor := 0; floor < len(*local); floor++ {
+		for btn := 0; btn < len((*local)[floor]); btn++ {
+			(*local)[floor][btn] = remote[floor][btn] // Directly copying instead of merging
+			if remote[floor][btn] {
+				fmt.Printf("Copied request at floor %d, button %d\n", floor, btn)
 			}
 		}
 	}
-}
 
-func broadcastElevatoStates(elevator *types.Elevator, id string, Tx chan types.UdpMsg) {
-	for {
-		time.Sleep(100 * time.Millisecond) // Avoid flooding the network
-		elevatorStateMsg := types.ElevatorStateMsg{
-			Elevator: *elevator,
-			Id:       id,
-		}
-		Tx <- types.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
-	}
-}
-
-func updateRemoteElevators(Rx chan types.UdpMsg, remoteElevators map[string]types.Elevator, localElevator *types.Elevator, id string) {
-	for {
-		select {
-		case msg := <-Rx:
-			if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id {
-				remoteElevator := msg.ElevatorStateMsg.Elevator
-
-				// Only sync hall orders if the remote elevator is in a state where it's safe to copy them
-				if remoteElevator.Behaviour == (types.EB_DoorOpen) {
-					syncHallRequests(localElevator, remoteElevator)
-				}
-
-				// Update the remote elevator states
-				remoteElevators[msg.ElevatorStateMsg.Id] = remoteElevator
-			}
-		}
-	}
-}
-
-func syncHallRequests(local *types.Elevator, remote types.Elevator) {
-	for floor := 0; floor < N_floors; floor++ {
-		for btn := 0; btn < N_buttons; btn++ {
-			if btn != int(elevio.BT_Cab) { // Only sync hall calls
-				if remote.Requests[floor][btn] {
-					local.Requests[floor][btn] = true
-				}
-			}
-		}
-	}
+	fmt.Println("Local requests after copying:", *local)
 }
