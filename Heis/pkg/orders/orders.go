@@ -25,6 +25,8 @@ func RequestMerger(e *elevator.Elevator, remoteElevators map[string]types.Elevat
 							(*e).Requests[floor][btn] = updateState
 						}
 
+						//update for assigned orders also!!!
+
 						confirmOrCloseRequests(e, remoteElevators, floor, btn)
 					}
 				}
@@ -52,6 +54,8 @@ func requestSynced(e *elevator.Elevator, remoteElevators map[string]types.Elevat
 	}
 	return true
 }
+
+func shouldTakeOrder(e* elevator.Elevator)
 
 // func OrderDistributer(e *elevator.Elevator, LocalOrderOut chan elevio.ButtonEvent) {
 // 	//egentlig bruke kostfunksjoner her

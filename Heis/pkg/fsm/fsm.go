@@ -28,13 +28,17 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 
 	for {
 		select {
-		case button_input := <-order:
+		case button_input := <-drv_buttons:
+
+			(*elevator).Requests[button_input.Floor][order.Button]
 
 			//assign
+			elev := AssignOrder(remoteElevators)
 
-			//wait for all confirmed
-			requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
-
+			if elev == elevator {
+				//wait for all confirmed
+				requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
+			}
 
 			// send button press message
 

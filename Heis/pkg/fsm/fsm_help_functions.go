@@ -15,9 +15,9 @@ import (
 // 	(*e).Behaviour = elevator.EB_Idle
 // 	(*e).Config.ClearRequestVariant = elevator.CV_InDirn
 // 	(*e).Config.DoorOpenDuration_s = 3.0
-// 	(*e).LocalOrders = make([][]bool, N_floors)
-// 	for i := range (*e).LocalOrders {
-// 		(*e).LocalOrders[i] = make([]bool, N_buttons)
+// 	(*e).AssignedOrders = make([][]bool, N_floors)
+// 	for i := range (*e).AssignedOrders {
+// 		(*e).AssignedOrders[i] = make([]bool, N_buttons)
 // 	}
 
 // }
@@ -35,16 +35,16 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			//drv_doorTimer <- 0.0
-			(*e).LocalOrders[btn_floor][btn_type] = 3
+			(*e).AssignedOrders[btn_floor][btn_type] = 3
 		} else {
-			//(*e).LocalOrders[btn_floor][btn_type] = 2
+			(*e).AssignedOrders[btn_floor][btn_type] = 2
 		}
 
 	case elevator.EB_Moving:
-		//(*e).LocalOrders[btn_floor][btn_type] = 2
+		(*e).AssignedOrders[btn_floor][btn_type] = 2
 
 	case elevator.EB_Idle:
-		//(*e).LocalOrders[btn_floor][btn_type] = 2
+		(*e).AssignedOrders[btn_floor][btn_type] = 2
 		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
@@ -149,7 +149,7 @@ func setAllLights(e *elevator.Elevator) {
 	//set ligths
 	for floor := 0; floor < N_floors; floor++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.LocalOrders[floor][btn] == 2 {
+			if e.AssignedOrders[floor][btn] == 2 {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 			} else {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)

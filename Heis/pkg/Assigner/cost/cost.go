@@ -13,7 +13,7 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 	if elevator.Behaviour(elev.Behaviour) != elevator.Unavailable {
 		e := new(elevator.Elevator)
 		*e = *elev //lager en kopi av heisen for å estimere kjøretiden når man legger til den nye orderen
-		e.Requests[req.Floor][req.Button] = elevator.Comfirmed
+		e.AssignedOrders[req.Floor][req.Button] = elevator.Comfirmed
 
 		duration := 0
 
@@ -51,10 +51,10 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 	return 999 //returnerer høy kostnad dersom heisen er unavailable
 }
 
-// func requestsAbove(elev elevator.DistributorElevator) bool {
+// func AssignedOrdersAbove(elev elevator.DistributorElevator) bool {
 // 	for f := elev.Floor + 1; f < elevator.NumFloors; f++ {
-// 		for btn := range elev.Requests[f] {
-// 			if elev.Requests[f][btn] == elevator.Comfirmed {
+// 		for btn := range elev.AssignedOrders[f] {
+// 			if elev.AssignedOrders[f][btn] == elevator.Comfirmed {
 // 				return true
 // 			}
 // 		}
@@ -62,10 +62,10 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 // 	return false
 // }
 
-// func requestsBelow(elev elevator.DistributorElevator) bool {
+// func AssignedOrdersBelow(elev elevator.DistributorElevator) bool {
 // 	for f := 0; f < elev.Floor; f++ {
-// 		for btn := range elev.Requests[f] {
-// 			if elev.Requests[f][btn] == elevator.Comfirmed {
+// 		for btn := range elev.AssignedOrders[f] {
+// 			if elev.AssignedOrders[f][btn] == elevator.Comfirmed {
 // 				return true
 // 			}
 // 		}
@@ -74,31 +74,31 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 // }
 
 // func requestClearAtCurrentFloor(elev *elevator.DistributorElevator) {
-// 	elev.Requests[elev.Floor][int(elevio.BT_Cab)] = elevator.None
+// 	elev.AssignedOrders[elev.Floor][int(elevio.BT_Cab)] = elevator.None
 // 	switch {
 // 	case elev.Dirn == elevator.Up:
-// 		elev.Requests[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
-// 		if !requestsAbove(*elev) {
-// 			elev.Requests[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
+// 		elev.AssignedOrders[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
+// 		if !AssignedOrdersAbove(*elev) {
+// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
 // 		}
 // 	case elev.Dirn == elevator.Down:
-// 		elev.Requests[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
-// 		if !requestsBelow(*elev) {
-// 			elev.Requests[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
+// 		elev.AssignedOrders[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
+// 		if !AssignedOrdersBelow(*elev) {
+// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
 // 		}
 // 	}
 // }
 
-// func requestShouldStop(elev elevator.DistributorElevator) bool {
+// func AssignedOrdershouldStop(elev elevator.DistributorElevator) bool {
 // 	switch {
 // 	case elev.Dirn == elevator.Down:
-// 		return elev.Requests[elev.Floor][int(elevio.BT_HallDown)] == elevator.Comfirmed ||
-// 			elev.Requests[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
-// 			!requestsBelow(elev)
+// 		return elev.AssignedOrders[elev.Floor][int(elevio.BT_HallDown)] == elevator.Comfirmed ||
+// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
+// 			!AssignedOrdersBelow(elev)
 // 	case elev.Dirn == elevator.Up:
-// 		return elev.Requests[elev.Floor][int(elevio.BT_HallUp)] == elevator.Comfirmed ||
-// 			elev.Requests[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
-// 			!requestsAbove(elev)
+// 		return elev.AssignedOrders[elev.Floor][int(elevio.BT_HallUp)] == elevator.Comfirmed ||
+// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
+// 			!AssignedOrdersAbove(elev)
 // 	default:
 // 		return true
 // 	}
@@ -107,9 +107,9 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 // func requestChooseDirnection(elev *elevator.DistributorElevator) {
 // 	switch elev.Dirn {
 // 	case elevator.Up:
-// 		if requestsAbove(*elev) {
+// 		if AssignedOrdersAbove(*elev) {
 // 			elev.Dirn = elevator.Up
-// 		} else if requestsBelow(*elev) {
+// 		} else if AssignedOrdersBelow(*elev) {
 // 			elev.Dirn = elevator.Down
 // 		} else {
 // 			elev.Dirn = elevator.Stop
@@ -117,9 +117,9 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 // 	case elevator.Down:
 // 		fallthrough
 // 	case elevator.Stop:
-// 		if requestsBelow(*elev) {
+// 		if AssignedOrdersBelow(*elev) {
 // 			elev.Dirn = elevator.Down
-// 		} else if requestsAbove(*elev) {
+// 		} else if AssignedOrdersAbove(*elev) {
 // 			elev.Dirn = elevator.Up
 // 		} else {
 // 			elev.Dirn = elevator.Stop

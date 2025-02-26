@@ -42,6 +42,7 @@ type Elevator struct {
 	Floor      int
 	Dirn       elevio.MotorDirection
 	Requests   [][]RequestState		//acts as cyclic counter
+	AssignedOrders   [][]RequestState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
 	Id 		   string
@@ -54,13 +55,13 @@ type Elevator struct {
 	}
 }
 
-type DistributorElevator struct {
-	ID       string
-	Floor    int
-	Dir      Direction
-	Requests [][]RequestState
-	Behave   Behaviour
-}
+// type DistributorElevator struct {
+// 	ID       string
+// 	Floor    int
+// 	Dir      Direction
+// 	Requests [][]RequestState
+// 	Behave   Behaviour
+// }
 
 type Request struct {
 	Floor  int
@@ -96,13 +97,13 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 		(*e).Index = i
 	}
 	
-	(*e).LocalOrders = make([][]int, N_floors)
-	for i := range (*e).LocalOrders {
-		(*e).LocalOrders[i] = make([]int, N_buttons)
+	(*e).AssignedOrders = make([][]int, N_floors)
+	for i := range (*e).AssignedOrders {
+		(*e).AssignedOrders[i] = make([]int, N_buttons)
 	}
-	(*e).GlobalOrders = make([][]int, N_floors)
-	for i := range (*e).GlobalOrders {
-		(*e).GlobalOrders[i] = make([]int, 2 + N_elevators)
+	(*e).Requests = make([][]int, N_floors)
+	for i := range (*e).Requests {
+		(*e).Requests[i] = make([]int, 2 + N_elevators)
 	}
 }
 
