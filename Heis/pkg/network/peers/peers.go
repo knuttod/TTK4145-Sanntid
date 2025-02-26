@@ -49,7 +49,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState 
 	}
 }
 
-func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
+func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- types.ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -70,7 +70,10 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 
 		id := msg.Id // Extract peer ID
 
-		// Adding new connection
+		// Forward the full elevator state to Fsm
+		elevatorStateCh <- msg
+
+		// Track peer presence
 		p.New = ""
 		if id != "" {
 			if _, idExists := lastSeen[id]; !idExists {
@@ -90,7 +93,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 			}
 		}
 
-		// Sending update (Only print IDs, not states)
+		// Send peer update only if there was a change
 		if updated {
 			p.Peers = make([]string, 0, len(lastSeen))
 
@@ -103,7 +106,6 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 
 			peerUpdateCh <- p
 
-			// Print connection IDs only
 			fmt.Println("Connected peers:", p.Peers)
 		}
 	}

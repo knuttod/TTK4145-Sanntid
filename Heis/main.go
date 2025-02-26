@@ -65,16 +65,17 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
+	elevatorStateCh := make(chan types.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 	Tx := make(chan types.UdpMsg)
 	Rx := make(chan types.UdpMsg)
 
 	go peers.Transmitter(15647, id, peerTxEnable, &elevator)
-	go peers.Receiver(15647, peerUpdateCh)
+	go peers.Receiver(15647, peerUpdateCh, elevatorStateCh)
 	go bcast.Transmitter(16569, Tx)
 	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
+	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, elevatorStateCh, id)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
 	fmt.Println("Started")
