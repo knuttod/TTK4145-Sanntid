@@ -14,9 +14,9 @@ import (
 const N_floors = 4
 const N_buttons = 3
 
-func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
+func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, peerUpdateCh chan peers.PeerUpdate, id string) {
 
-	remoteElevators := make(map[string]types.Elevator)
+	remoteElevators := make(map[string]elevator.Elevator)
 
 	// init state machine between floors
 	fsm_init(elevator)

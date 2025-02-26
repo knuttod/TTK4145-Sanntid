@@ -102,10 +102,10 @@ func main() {
 
 	
 	go message.TransmitState(&e, stateTx, id)
-	go orders.LocalButtonPressHandler(&e, drv_buttons, LocalOrderRequest)
-	go orders.GlobalOrderMerger(&e, stateRx, stateTx, LocalOrderRequest, LocalOrderTask)
+	// go orders.LocalButtonPressHandler(&e, drv_buttons, LocalOrderRequest)
+	// go orders.GlobalOrderMerger(&e, stateRx, stateTx, LocalOrderRequest, LocalOrderTask)
 	// go orders.SyncGlobalWithLocalOrders(&e)
-	go orders.CheckForCompletedOrders(&e, LocalOrderRequest)
+	// go orders.CheckForCompletedOrders(&e, LocalOrderRequest)
 	
 	go fsm.Fsm(&e, LocalOrderTask, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, requestTx, requestRx, peerTxEnable, peerUpdateCh)
 	

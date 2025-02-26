@@ -8,124 +8,24 @@ import (
 	"Heis/pkg/fsm"
 )
 
-func GlobalOrderMerger(e *elevator.Elevator, stateRX, stateTx chan msgTypes.ElevatorStateMsg, localOrderIn chan elevator.Order, localOrderOut chan elevio.ButtonEvent) {
-	var external_elevator elevator.Elevator
-	var currentState int
-	var updateState int
 
-	// dummy variable for now
-	var equal bool
+func RequestMerger(e *elevator.Elevator, remoteElevators map[string]types.Elevator, stateUpdated chan bool) {
+	var currentState elevator.RequestState
+	var updateState elevator.RequestState
+
 	for {
-		equal = true
 		select {
-		case a := <-stateRX:
-
-			// SyncGlobalWithLocalOrder(e)
-			
-			external_elevator = a.Elevator
-			if a.Id != (*e).Id { //ignores messages from itself and if orders are equal
-				//fmt.Println(a.Id)
-				for floor := range (*e).GlobalOrders {
-					for btn := range (*e).GlobalOrders[floor] {
-						// If cyclic counter is 1 behind external it can update
-						currentState = (*e).GlobalOrders[floor][btn]
-						updateState = external_elevator.GlobalOrders[floor][btn]
-						//fmt.Println(updateState - currentState)
-						
-						if updateState - currentState == 1 || (updateState == 0 && currentState == 2) {
-							(*e).GlobalOrders[floor][btn] = updateState
-							equal = false
-							fmt.Println("State updated")
+		case <- stateUpdated:
+			for id, elev := range remoteElevators {
+				for floor := range (*e).Requests {
+					for btn := range (*e).Requests[floor] {
+						currentState = (*e).Requests[floor][btn]
+						updateState = elev.Requests[floor][btn]
+						if updateState - currentState == 1 || (updateState == 0 && currentState == 3) {
+							(*e).Requests[floor][btn] = updateState
 						}
-					}
-				}
-				// ExternalElevators[a.Elevator.Index] = external_elevator
-				// ExternalElevators[(*e).Index] = (*e)
 
-			
-				// if true {//!equal {
-				// 	// Må kanskje fikse funksjon for å få denne enkel eller endre på funksjonen
-				// 	//OrderDistributer(e, localOrderOut)
-				// 	fsm.SetAllLightsOrder((*e).GlobalOrders, e)
-				// }
-			}
-		case a := <-localOrderIn:
-
-			//SyncGlobalWithLocalOrder(e)
-
-			// Kanskje sjekke om alle er på samme state før man kan gjøre dette?
-			// Kan også hende at lokale of globale ordre ikke er syncet enda og knappen ikke vil lyse ved trykk/orderen ikke blir opdatert
-			updateState = a.State
-			if a.Action.Button == 2 {
-				currentState = (*e).GlobalOrders[a.Action.Floor][2+(*e).Index-1]
-			} else {
-				currentState = (*e).GlobalOrders[a.Action.Floor][a.Action.Button]
-			}
-
-			if updateState - currentState == 1 || (updateState == 0 && currentState == 2) {
-				(*e).GlobalOrders[a.Action.Floor][a.Action.Button] = updateState
-				fmt.Println("Local state update")
-				equal = false
-			}
-			//OrderDistributer(e, localOrderOut)
-		}
-
-		if !equal {
-			fmt.Println("Light update")
-			fsm.SetAllLightsOrder((*e).GlobalOrders, e)
-			OrderDistributer(e, localOrderOut)
-		}
-
-		
-
-	}
-}
-
-// Tror bare vi trenger denne for å synkronisere når ordre er ferdige. 
-// func SyncGlobalWithLocalOrders(e *elevator.Elevator) {
-// 	var currentState int
-// 	var updateState int
-// 	for {
-// 		for floor := range (*e).LocalOrders {
-// 			for btn := range (*e).LocalOrders[floor] {
-// 				// If cyclic counter is 1 behind external it can update
-// 				updateState = (*e).LocalOrders[floor][btn]
-// 				if btn == 2 {
-// 					currentState = (*e).GlobalOrders[floor][(*e).Index + 1]
-// 					if updateState - currentState == 1 || (updateState == 0 && currentState == 2) {
-// 						(*e).GlobalOrders[floor][(*e).Index + 1] = updateState
-// 					}
-// 				} else {
-// 					currentState = (*e).GlobalOrders[floor][btn]
-// 					if updateState - currentState == 1 || (updateState == 0 && currentState == 2) {
-// 						(*e).GlobalOrders[floor][btn] = updateState
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-func CheckForCompletedOrders(e *elevator.Elevator, localOrderIn chan elevator.Order) {
-	var currentState int
-	var updateState int
-	for {
-		for floor := range (*e).LocalOrders {
-			for btn := range (*e).LocalOrders[floor] {
-				// If cyclic counter is 1 behind external it can update
-				updateState = (*e).LocalOrders[floor][btn]
-				if btn == 2 {
-					currentState = (*e).GlobalOrders[floor][(*e).Index + 1]
-					if (updateState == 0 && currentState == 2) {
-						//(*e).GlobalOrders[floor][(*e).Index + 1] = updateState
-						localOrderIn <- elevator.Order{State: 0, Action: elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)}}
-
-					}
-				} else {
-					currentState = (*e).GlobalOrders[floor][btn]
-					if (updateState == 0 && currentState == 2) {
-						//(*e).GlobalOrders[floor][btn] = updateState
-						localOrderIn <- elevator.Order{State: 0, Action: elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)}}
+						confirmOrCloseRequests(e, remoteElevators, floor, btn)
 					}
 				}
 			}
@@ -133,24 +33,23 @@ func CheckForCompletedOrders(e *elevator.Elevator, localOrderIn chan elevator.Or
 	}
 }
 
-func GlobalOrderSynced(e *elevator.Elevator, state, floor, btn int) bool { //egentlig ta inn informasjonen fra alle heiser
-	// for i := 0; i< N_elevators; i++ {
-	// 	check if all active elevators have the order synced
-	// }
-	//return true or false
+func confirmOrCloseRequests(e *elevator.Elevator, remoteElevators map[string]types.Elevator, floor, btn int) {
+	if requestSynced(e, remoteElevators, floor, btn) {
+		if updateState == 1 {
+			(*e).Requests[floor][btn] = 2
+		}
+		if updateState == 3 {
+			(*e).Requests[floor][btn] = 0
+		}
+	}
+}
 
-	// for i := range (*e).GlobalOrders {
-	// 	for j := range (*e).GlobalOrders[i] {
-	// 		for k := range ExternalElevators{
-	// 			fmt.Println(k)
-	// 			fmt.Println(j)
-	// 			fmt.Println(ExternalElevators[k])
-	// 			// if (*e).GlobalOrders[i][j] != ExternalElevators[k].GlobalOrders[i][j] {
-	// 			// 	return false
-	// 			// }
-	// 		}
-	// 	}
-	// }
+func requestSynced(e *elevator.Elevator, remoteElevators map[string]types.Elevator, floor, btn int) bool {
+	for _, elev := range remoteElevators {
+		if (e*).requests[floor][btn] != elev.requests[floor][btn] {
+			return false
+		}
+	}
 	return true
 }
 

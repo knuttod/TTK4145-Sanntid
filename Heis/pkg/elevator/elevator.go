@@ -41,12 +41,11 @@ const (
 type Elevator struct {
 	Floor      int
 	Dirn       elevio.MotorDirection
-	LocalOrders   [][]int
+	Requests   [][]RequestState		//acts as cyclic counter
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
 	Id 		   string
-	Index 		   int
-	GlobalOrders 	   [][]int	//Acts as a cyclic counter with 0 completed/no order, 1 unconfirmed order, 2 confirmed order. Two first rows are hall orders, then there are cab calls for elev1, elev2 and so on
+	Index 	   int
 	//ExternalElevators []Elevator	//Dette funker ikke, vet ikke hvorfor
 
 	Config struct { //type?
