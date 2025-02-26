@@ -29,17 +29,10 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 	for {
 		select {
 		case button_input := <-drv_buttons:
-
-			(*elevator).Requests[button_input.Floor][order.Button]
-
 			//assign
-			elev := AssignOrder(remoteElevators)
-
-			if elev == elevator {
-				//wait for all confirmed
-				requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
+			if ordersSynced(e, remoteElevators, button_input.floor, button_input.btn){
+				AssignOrder(remoteElevators, (*e).Id, button_input)
 			}
-
 			// send button press message
 
 			// send unconfirmed message to OrderMerger
@@ -51,7 +44,10 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 
 			log.Println("drv_buttons: %v", button_input)
 			fmt.Println("Button input: ", button_input)
-			requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
+			// requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
+		case Order := <- startOrder:
+			requestButtonPress(e, startOrder.Floor, startOrder.Button, drv_doorTimerStart)
+		
 		case current_floor := <-drv_floors:
 			floorArrival(elevator, current_floor, drv_doorTimerStart, Tx, id)
 			// Send clear floor message

@@ -3,59 +3,112 @@ package orders
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/msgTypes"
+	"Heis/pkg/msgtypes"
 	"fmt"
 	"Heis/pkg/fsm"
 )
 
 
-func RequestMerger(e *elevator.Elevator, remoteElevators map[string]types.Elevator, stateUpdated chan bool) {
+func RequestMerger(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, stateUpdated chan bool, startOrder chan chan elevio.ButtonEvent) {
 	var currentState elevator.RequestState
 	var updateState elevator.RequestState
 
 	for {
 		select {
 		case <- stateUpdated:
-			for id, elev := range remoteElevators {
-				for floor := range (*e).Requests {
-					for btn := range (*e).Requests[floor] {
-						currentState = (*e).Requests[floor][btn]
-						updateState = elev.Requests[floor][btn]
-						if updateState - currentState == 1 || (updateState == 0 && currentState == 3) {
-							(*e).Requests[floor][btn] = updateState
-						}
+			for id, _ := range (*e).AssginedOrders {
+				for _, elev := range (*e).AssginedOrders {
+					for floor := range N_floors{
+					// for Requests
+					// for btn := range (*e).Requests[floor] {
+					// 	currentState = (*e).Requests[floor][btn]
+					// 	updateState = elev.Requests[floor][btn]
+					// 	if updateState - currentState == 1 || (updateState == 0 && currentState == 3) {
+					// 		(*e).Requests[floor][btn] = updateState
+					// 	}
+					// 	confirmOrCloseRequests(e, remoteElevators, floor, btn)
+					// }
 
-						//update for assigned orders also!!!
-
-						confirmOrCloseRequests(e, remoteElevators, floor, btn)
+					// for AssginedOrders
+					for btn := range N_buttons {
+							currentState = (*e).AssginedOrders[id][floor][btn]
+							updateState = elev.AssginedOrders[id][floor][btn]
+							if updateState - currentState == 1 || (updateState == elevator.None && currentState == elevator.Complete) {
+								(*e).AssginedOrders[(*e).Id][floor][btn] = updateState
+							}
+						}	
 					}
+					confirmOrCloseOrders(e, remoteElevators, id, floor, btn)
+				}
+			}
+
+			for floor := range N_floors {
+				for btn := range N_buttons {
+					shouldStartOrder(e, startOrder, (*e).id, floor, btn)
 				}
 			}
 		}
 	}
 }
 
-func confirmOrCloseRequests(e *elevator.Elevator, remoteElevators map[string]types.Elevator, floor, btn int) {
-	if requestSynced(e, remoteElevators, floor, btn) {
-		if updateState == 1 {
-			(*e).Requests[floor][btn] = 2
-		}
-		if updateState == 3 {
-			(*e).Requests[floor][btn] = 0
-		}
-	}
-}
+// func requestSynced(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, floor, btn int) bool {
+// 	for _, elev := range remoteElevators {
+// 		if (e*).requests[floor][btn] != elev.requests[floor][btn] {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
+// func confirmOrCloseRequests(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, floor, btn int) {
+// 	if requestSynced(e, remoteElevators, floor, btn) {
+// 		if updateState == 1 {
+// 			(*e).Requests[floor][btn] = 2
+// 		}
+// 		if updateState == 3 {
+// 			(*e).Requests[floor][btn] = 0
+// 		}
+// 	}
+// }
 
-func requestSynced(e *elevator.Elevator, remoteElevators map[string]types.Elevator, floor, btn int) bool {
+func ordersSynced(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, id, floor, btn int) bool {
 	for _, elev := range remoteElevators {
-		if (e*).requests[floor][btn] != elev.requests[floor][btn] {
+		if (e*).AssignedOrders[id][floor][btn] != elev.AssignedOrders[id][floor][btn] {
 			return false
 		}
 	}
 	return true
 }
 
-func shouldTakeOrder(e* elevator.Elevator)
+func confirmOrCloseOrders(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, id, floor, btn int) {
+	if ordersSynced(e, remoteElevators, id, floor, btn) {
+		if updateState == 1 {
+			(e*).AssignedOrders[id][floor][btn] = 2
+		}
+		if updateState == 3 {
+			(e*).AssignedOrders[id][floor][btn] = 0
+		}
+	}
+}
+
+
+func shouldStartOrder(e* elevator.Elevator, startOrder chan elevio.ButtonEvent, id, floor, btn int) {
+	// for floor := range N_floors {
+	// 	for btn := range N_buttons {
+	// 		if (*e).AssginedOrders[(*e).Id][floor][btn] {
+	// 			startOrder <- elevio.ButtonEvent{
+	// 				Floor:  floor,
+	// 				Button: elevio.ButtonType(button)
+	// 			}
+	// 		}
+	// 	}
+	// }
+	if ordersSynced(e, remoteElevators, id, button_input.floor, button_input.btn) && (*e).AssginedOrders[id][floor][btn] == elevator.Confirmed{
+		startOrder <- elevio.ButtonEvent{
+			Floor:  floor,
+			Button: elevio.ButtonType(button)
+		}
+	}
+}
 
 // func OrderDistributer(e *elevator.Elevator, LocalOrderOut chan elevio.ButtonEvent) {
 // 	//egentlig bruke kostfunksjoner her

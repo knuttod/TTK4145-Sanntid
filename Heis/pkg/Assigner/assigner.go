@@ -39,22 +39,45 @@ func ReassignOrders(elevators []*elevator.Elevator, ch_newLoacalOrder chan elevi
 	}
 }
 
-func AssignOrder(elevators []*elevator.Elevator, order elevio.ButtonEvent) *elevator.Elevator{
-	if len(elevators) < 2 || order.Button == elevio.BT_Cab {
-		elevators[elevator.LocalElevator].AssignedOrders[order.Floor][order.Button] = elevator.Order
+// func AssignOrder(elevators []*elevator.Elevator, order elevio.ButtonEvent) *elevator.Elevator{
+// 	if len(elevators) < 2 || order.Button == elevio.BT_Cab {
+// 		elevators[elevator.LocalElevator].AssignedOrders[order.Floor][order.Button] = elevator.Order
+// 		return
+// 	}
+// 	minCost := 99999
+// 	elevCost := 0
+// 	var minElev *elevator.Elevator
+// 	for _, elev := range elevators {
+// 		elevCost = cost.Cost(elev, order)
+// 		if elevCost < minCost {
+// 			minCost = elevCost
+// 			minElev = elev
+// 		}
+// 	}
+// 	(*minElev).AssignedOrders[order.Floor][order.Button] = elevator.Order
+// 	//(*minElev).Requests[order.Floor][order.Button] = elevator.Order
+// 	return minElev
+// }
+
+func AssignOrder(AssignedOrders map[string]([N_floors][N_buttons]RequestState), Iselfd string, order elevio.ButtonEvent) {
+	if len(AssignedOrders) < 2 || order.Button == elevio.BT_Cab {
+		if AssignedOrders[(*e).Id][order.Floor][order.Button] == elevator.None {
+			AssignedOrders[(*e).Id][order.Floor][order.Button] = elevator.Order
+		}
+		// elevators[elevator.LocalElevator].AssignedOrders[order.Floor][order.Button] = elevator.Order
 		return
 	}
 	minCost := 99999
 	elevCost := 0
-	var minElev *elevator.Elevator
-	for _, elev := range elevators {
+	var minElev string
+	for id, elev := range AssignedOrders {
 		elevCost = cost.Cost(elev, order)
 		if elevCost < minCost {
 			minCost = elevCost
-			minElev = elev
+			minElev = id
 		}
 	}
-	(*minElev).AssignedOrders[order.Floor][order.Button] = elevator.Order
-	//(*minElev).Requests[order.Floor][order.Button] = elevator.Order
-	return minElev
+	if AssignedOrders[minElev][order.Floor][order.Button] == elevator.None {
+		AssignedOrders[minElev][order.Floor][order.Button] = elevator.Order
+	}
 }
