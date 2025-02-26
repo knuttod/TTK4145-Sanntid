@@ -1,47 +1,49 @@
 package cost
 
 import (
-	"Heis/pkg/config"
+	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"Heis/pkg/fsm"
 )
 
 const TRAVEL_TIME = 10
 const NumElevators = 4
 
-func Cost(elev *config.DistributorElevator, req elevio.ButtonEvent) int {
-	if elev.Behave != config.Unavailable {
-		e := new(config.DistributorElevator)
+func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
+	if elevator.Behaviour(elev.Behaviour) != elevator.Unavailable {
+		e := new(elevator.Elevator)
 		*e = *elev //lager en kopi av heisen for å estimere kjøretiden når man legger til den nye orderen
-		e.Requests[req.Floor][req.Button] = config.Comfirmed
+		e.Requests[req.Floor][req.Button] = elevator.Comfirmed
 
 		duration := 0
 
-		switch e.Behave {
-		case config.Idle:
-			requestChooseDirection(e)
-			if e.Dir == config.Stop {
-				return duration //Dersom IDLE og hvis det er ingen retning blir det ingen ekstra kostnad
+		switch e.Behaviour {
+		case elevator.EB_Idle:
+			fsm.ChooseDirection((*e))
+			//requestChooseDirnection(e)
+			if e.Dirn == elevio.MD_Stop {
+				return duration //Dersom IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
 
 			}
-		case config.Moving:
+		case elevator.EB_Moving:
 			duration += TRAVEL_TIME / 2 //dersom heisen er i beveglse legger vi til en kostand
-			e.Floor += int(e.Dir)
-		case config.DoorOpen:
-			duration -= config.DoorOpenDuration / 2
+			e.Floor += int(e.Dirn)
+		case elevator.EB_DoorOpen:
+			duration -= elevator.DoorOpenDuration / 2
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
 			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
 
 		}
 		for {
-			if requestShouldStop(*e) {
-				requestClearAtCurrentFloor(e)
-				duration += config.DoorOpenDuration
-				requestChooseDirection(e)
-				if e.Dir == config.Stop {
+			if fsm.ShouldStop((*e)) {
+				fsm.ClearAtCurrentFloor(*e)
+				duration += elevator.DoorOpenDuration
+				fsm.ChooseDirection(*e)
+				if e.Dirn == elevio.MD_Stop {
 					return duration //returner duration når den simulerte heisen har kommet til en stopp
 				}
 			}
-			e.Floor += int(e.Dir)   //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
+			e.Floor += int(e.Dirn)  //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
 			duration += TRAVEL_TIME //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
 
@@ -49,82 +51,78 @@ func Cost(elev *config.DistributorElevator, req elevio.ButtonEvent) int {
 	return 999 //returnerer høy kostnad dersom heisen er unavailable
 }
 
-func requestsAbove(elev config.DistributorElevator) bool {
-	for f := elev.Floor + 1; f < config.NumFloors; f++ {
-		for btn := range elev.Requests[f] {
-			if elev.Requests[f][btn] == config.Comfirmed {
-				return true
-			}
-		}
-	}
-	return false
-}
+// func requestsAbove(elev elevator.DistributorElevator) bool {
+// 	for f := elev.Floor + 1; f < elevator.NumFloors; f++ {
+// 		for btn := range elev.Requests[f] {
+// 			if elev.Requests[f][btn] == elevator.Comfirmed {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func requestsBelow(elev config.DistributorElevator) bool {
-	for f := 0; f < elev.Floor; f++ {
-		for btn := range elev.Requests[f] {
-			if elev.Requests[f][btn] == config.Comfirmed {
-				return true
-			}
-		}
-	}
-	return false
-}
+// func requestsBelow(elev elevator.DistributorElevator) bool {
+// 	for f := 0; f < elev.Floor; f++ {
+// 		for btn := range elev.Requests[f] {
+// 			if elev.Requests[f][btn] == elevator.Comfirmed {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func requestClearAtCurrentFloor(elev *config.DistributorElevator) {
-	elev.Requests[elev.Floor][int(elevio.BT_Cab)] = config.None
-	switch {
-	case elev.Dir == config.Up:
-		elev.Requests[elev.Floor][int(elevio.BT_HallUp)] = config.None
-		if !requestsAbove(*elev) {
-			elev.Requests[elev.Floor][int(elevio.BT_HallDown)] = config.None
-		}
-	case elev.Dir == config.Down:
-		elev.Requests[elev.Floor][int(elevio.BT_HallDown)] = config.None
-		if !requestsBelow(*elev) {
-			elev.Requests[elev.Floor][int(elevio.BT_HallUp)] = config.None
-		}
-	}
-}
+// func requestClearAtCurrentFloor(elev *elevator.DistributorElevator) {
+// 	elev.Requests[elev.Floor][int(elevio.BT_Cab)] = elevator.None
+// 	switch {
+// 	case elev.Dirn == elevator.Up:
+// 		elev.Requests[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
+// 		if !requestsAbove(*elev) {
+// 			elev.Requests[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
+// 		}
+// 	case elev.Dirn == elevator.Down:
+// 		elev.Requests[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
+// 		if !requestsBelow(*elev) {
+// 			elev.Requests[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
+// 		}
+// 	}
+// }
 
-func requestShouldStop(elev config.DistributorElevator) bool {
-	switch {
-	case elev.Dir == config.Down:
-		return elev.Requests[elev.Floor][int(elevio.BT_HallDown)] == config.Comfirmed ||
-			elev.Requests[elev.Floor][int(elevio.BT_Cab)] == config.Comfirmed ||
-			!requestsBelow(elev)
-	case elev.Dir == config.Up:
-		return elev.Requests[elev.Floor][int(elevio.BT_HallUp)] == config.Comfirmed ||
-			elev.Requests[elev.Floor][int(elevio.BT_Cab)] == config.Comfirmed ||
-			!requestsAbove(elev)
-	default:
-		return true
-	}
-}None      RequestState = 0
-Order     RequestState = 1
-Comfirmed RequestState = 2
-Complete  RequestState = 3
-)
+// func requestShouldStop(elev elevator.DistributorElevator) bool {
+// 	switch {
+// 	case elev.Dirn == elevator.Down:
+// 		return elev.Requests[elev.Floor][int(elevio.BT_HallDown)] == elevator.Comfirmed ||
+// 			elev.Requests[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
+// 			!requestsBelow(elev)
+// 	case elev.Dirn == elevator.Up:
+// 		return elev.Requests[elev.Floor][int(elevio.BT_HallUp)] == elevator.Comfirmed ||
+// 			elev.Requests[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
+// 			!requestsAbove(elev)
+// 	default:
+// 		return true
+// 	}
+// }
 
-func requestChooseDirection(elev *config.DistributorElevator) {
-	switch elev.Dir {
-	case config.Up:
-		if requestsAbove(*elev) {
-			elev.Dir = config.Up
-		} else if requestsBelow(*elev) {
-			elev.Dir = config.Down
-		} else {
-			elev.Dir = config.Stop
-		}
-	case config.Down:
-		fallthrough
-	case config.Stop:
-		if requestsBelow(*elev) {
-			elev.Dir = config.Down
-		} else if requestsAbove(*elev) {
-			elev.Dir = config.Up
-		} else {
-			elev.Dir = config.Stop
-		}
-	}
-}
+// func requestChooseDirnection(elev *elevator.DistributorElevator) {
+// 	switch elev.Dirn {
+// 	case elevator.Up:
+// 		if requestsAbove(*elev) {
+// 			elev.Dirn = elevator.Up
+// 		} else if requestsBelow(*elev) {
+// 			elev.Dirn = elevator.Down
+// 		} else {
+// 			elev.Dirn = elevator.Stop
+// 		}
+// 	case elevator.Down:
+// 		fallthrough
+// 	case elevator.Stop:
+// 		if requestsBelow(*elev) {
+// 			elev.Dirn = elevator.Down
+// 		} else if requestsAbove(*elev) {
+// 			elev.Dirn = elevator.Up
+// 		} else {
+// 			elev.Dirn = elevator.Stop
+// 		}
+// 	}
+// }

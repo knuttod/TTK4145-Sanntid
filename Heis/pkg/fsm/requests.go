@@ -1,8 +1,8 @@
 package fsm
 
 import (
-	"Heis/pkg/elevio"
 	"Heis/pkg/elevator"
+	"Heis/pkg/elevio"
 	//"fmt"
 )
 
@@ -36,14 +36,14 @@ func Below(e elevator.Elevator) bool {
 
 func Here(e elevator.Elevator) bool {
 	for btn := 0; btn < N_buttons; btn++ {
-		if e.LocalOrders[e.Floor][btn] == 2{
+		if e.LocalOrders[e.Floor][btn] == 2 {
 			return true
 		}
 	}
 	return false
 }
 
-func chooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
+func ChooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
 
 	switch e.Dirn {
 	case elevio.MD_Up:
@@ -127,7 +127,6 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevio.
 		return false
 	}
 }
-
 
 // Få inn funksjonaliltet for å sende eller opdatere globale orders når denne blir kjørt
 func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {

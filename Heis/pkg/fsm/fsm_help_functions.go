@@ -1,8 +1,10 @@
 package fsm
 
 import (
-	"Heis/pkg/elevio"
 	"Heis/pkg/elevator"
+	"Heis/pkg/elevio"
+	"fmt"
+	"time"
 	//"fmt"
 )
 
@@ -117,7 +119,7 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64) {
 
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:
-		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
+		var pair elevator.DirnBehaviourPair = ChooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
 
@@ -147,7 +149,7 @@ func setAllLights(e *elevator.Elevator) {
 	//set ligths
 	for floor := 0; floor < N_floors; floor++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.LocalOrders[floor][btn] == 2{
+			if e.LocalOrders[floor][btn] == 2 {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 			} else {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
@@ -160,17 +162,17 @@ func SetAllLightsOrder(Orders [][]int, e *elevator.Elevator) {
 	//set ligths
 	for floor := range Orders {
 		for btn := 0; btn < 2; btn++ {
-			if Orders[floor][btn] == 2{
+			if Orders[floor][btn] == 2 {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 			} else {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 			}
 		}
-		if Orders[floor][(*e).Index +1] == 2{
-				elevio.SetButtonLamp(elevio.ButtonType(2), floor, true)
-			} else {
-				elevio.SetButtonLamp(elevio.ButtonType(2), floor, false)
-			}
+		if Orders[floor][(*e).Index+1] == 2 {
+			elevio.SetButtonLamp(elevio.ButtonType(2), floor, true)
+		} else {
+			elevio.SetButtonLamp(elevio.ButtonType(2), floor, false)
+		}
 	}
 }
 
