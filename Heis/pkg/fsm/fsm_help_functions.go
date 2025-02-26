@@ -33,15 +33,16 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			//drv_doorTimer <- 0.0
+			(*e).LocalOrders[btn_floor][btn_type] = 3
 		} else {
-			(*e).LocalOrders[btn_floor][btn_type] = 2
+			//(*e).LocalOrders[btn_floor][btn_type] = 2
 		}
 
 	case elevator.EB_Moving:
-		(*e).LocalOrders[btn_floor][btn_type] = 2
+		//(*e).LocalOrders[btn_floor][btn_type] = 2
 
 	case elevator.EB_Idle:
-		(*e).LocalOrders[btn_floor][btn_type] = 2
+		//(*e).LocalOrders[btn_floor][btn_type] = 2
 		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour

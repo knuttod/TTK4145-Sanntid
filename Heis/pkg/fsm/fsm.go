@@ -29,9 +29,15 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 	for {
 		select {
 		case button_input := <-order:
+
+			//assign
+
+			//wait for all confirmed
+			requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
+
+
 			// send button press message
 
-			requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
 			// send unconfirmed message to OrderMerger
 			// When order is confirmed and is assigned from cost function calculations to this elevator send to request button press
 

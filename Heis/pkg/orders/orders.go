@@ -53,50 +53,50 @@ func requestSynced(e *elevator.Elevator, remoteElevators map[string]types.Elevat
 	return true
 }
 
-func OrderDistributer(e *elevator.Elevator, LocalOrderOut chan elevio.ButtonEvent) {
-	//egentlig bruke kostfunksjoner her
+// func OrderDistributer(e *elevator.Elevator, LocalOrderOut chan elevio.ButtonEvent) {
+// 	//egentlig bruke kostfunksjoner her
 
-	//Basicly sjekke om alle ordre er synkronisert, om det er tilfelle kan man fordele uncofirmed orders.
-	// Dette gjør man ved å velge den heisen som har lavest kost for ordren fra kostfunksjonene. 
-	// Heisen som får lavest kost selv setter ordren til å bli gjort lokalt og endrer fra uncofirmed til confirmed i ordrematrisen
-	var state int
-	if (*e).Index == 1 {
-		for floor := range (*e).LocalOrders {
-			for btn := range (*e).LocalOrders[floor] {
-				if btn == 2 { //Cab call
-					state = (*e).GlobalOrders[floor][(*e).Index + 1]
-					if GlobalOrderSynced(e, state, floor, btn) && state == 1 {
-						(*e).GlobalOrders[floor][(*e).Index + 1] = 2
-						// send button input to FSM
-						LocalOrderOut <- elevio.ButtonEvent{Floor : floor, Button : elevio.ButtonType(btn)}
-					}
-				} else {
-					state = (*e).GlobalOrders[floor][btn]
-					if GlobalOrderSynced(e, state, floor, btn) && state == 1 {
-						(*e).GlobalOrders[floor][btn] = 2
-						// send button input to FSM
-						LocalOrderOut <- elevio.ButtonEvent{Floor : floor, Button : elevio.ButtonType(btn)}
-					}
-				}
+// 	//Basicly sjekke om alle ordre er synkronisert, om det er tilfelle kan man fordele uncofirmed orders.
+// 	// Dette gjør man ved å velge den heisen som har lavest kost for ordren fra kostfunksjonene. 
+// 	// Heisen som får lavest kost selv setter ordren til å bli gjort lokalt og endrer fra uncofirmed til confirmed i ordrematrisen
+// 	var state int
+// 	if (*e).Index == 1 {
+// 		for floor := range (*e).LocalOrders {
+// 			for btn := range (*e).LocalOrders[floor] {
+// 				if btn == 2 { //Cab call
+// 					state = (*e).GlobalOrders[floor][(*e).Index + 1]
+// 					if GlobalOrderSynced(e, state, floor, btn) && state == 1 {
+// 						(*e).GlobalOrders[floor][(*e).Index + 1] = 2
+// 						// send button input to FSM
+// 						LocalOrderOut <- elevio.ButtonEvent{Floor : floor, Button : elevio.ButtonType(btn)}
+// 					}
+// 				} else {
+// 					state = (*e).GlobalOrders[floor][btn]
+// 					if GlobalOrderSynced(e, state, floor, btn) && state == 1 {
+// 						(*e).GlobalOrders[floor][btn] = 2
+// 						// send button input to FSM
+// 						LocalOrderOut <- elevio.ButtonEvent{Floor : floor, Button : elevio.ButtonType(btn)}
+// 					}
+// 				}
 				
-			}
-		}
-	}
-}
+// 			}
+// 		}
+// 	}
+// }
 
-func LocalButtonPressHandler (e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, localRequest chan elevator.Order) {
-	for {
+// func LocalButtonPressHandler (e *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, localRequest chan elevator.Order) {
+// 	for {
 		
-		button_input := <- drv_buttons
-		Order := elevator.Order { 
-			State : 1,
-			Action: button_input,
-		}
+// 		button_input := <- drv_buttons
+// 		Order := elevator.Order { 
+// 			State : 1,
+// 			Action: button_input,
+// 		}
 		
-		// Do not need this, but does not create any problems i think? May be bad code quality 
-		// May be wrong if orders is to be assigned to another elevator
-		(*e).LocalOrders[button_input.Floor][button_input.Button] = 1
+// 		// Do not need this, but does not create any problems i think? May be bad code quality 
+// 		// May be wrong if orders is to be assigned to another elevator
+// 		(*e).LocalOrders[button_input.Floor][button_input.Button] = 1
 
-		localRequest <- Order
-	}
-}
+// 		localRequest <- Order
+// 	}
+// }
