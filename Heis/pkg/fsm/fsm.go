@@ -6,6 +6,7 @@ import (
 	//"Heis/pkg/message"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
+	"Heis/pkg/orders"
 	"log"
 	"fmt"
 )
@@ -14,12 +15,10 @@ import (
 const N_floors = 4
 const N_buttons = 3
 
-func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, elevatorStateCh chan types.ElevatorStateMsg, id string) {
+func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, elevatorStateCh chan types.ElevatorStateMsg, id string) {
 
 	remoteElevators := make(map[string]elevator.Elevator)
 
-	// init state machine between floors
-	fsm_init(elevator)
 
 	//Kanskje ikke så robust, uten bruk av channelen
 	if elevio.GetFloor() == -1 {
@@ -30,7 +29,7 @@ func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floo
 		select {
 		case button_input := <-drv_buttons:
 			//assign
-			if ordersSynced(e, remoteElevators, button_input.floor, button_input.btn){
+			if orders.OrdersSynced(e, remoteElevators, button_input.floor, button_input.btn){
 				AssignOrder(remoteElevators, (*e).Id, button_input)
 			}
 			// send button press message

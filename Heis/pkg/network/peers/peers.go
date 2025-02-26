@@ -2,7 +2,8 @@ package peers
 
 import (
 	"Heis/pkg/network/conn"
-	"Heis/pkg/types"
+	"Heis/pkg/msgTypes"
+	"Heis/pkg/elevator"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -19,7 +20,7 @@ type PeerUpdate struct {
 const interval = 15 * time.Millisecond
 const timeout = 500 * time.Millisecond
 
-func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState *types.Elevator) {
+func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState *elevator.Elevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
@@ -32,7 +33,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState 
 
 		if enable {
 			// Create elevator state message
-			elevatorStateMsg := types.ElevatorStateMsg{
+			elevatorStateMsg := msgTypes.ElevatorStateMsg{
 				Elevator: *elevatorState, // Pass by reference
 				Id:       id,
 			}
@@ -49,7 +50,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState 
 	}
 }
 
-func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- types.ElevatorStateMsg) {
+func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -62,7 +63,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- t
 		conn.SetReadDeadline(time.Now().Add(interval))
 		n, _, _ := conn.ReadFrom(buf[0:])
 
-		var msg types.ElevatorStateMsg
+		var msg msgTypes.ElevatorStateMsg
 		err := json.Unmarshal(buf[:n], &msg)
 		if err != nil {
 			continue // Ignore invalid messages

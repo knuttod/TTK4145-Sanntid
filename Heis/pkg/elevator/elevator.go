@@ -42,7 +42,7 @@ type Elevator struct {
 	Floor      int
 	Dirn       elevio.MotorDirection
 	Requests   [][]RequestState		//acts as cyclic counter
-	AssignedOrders   map[string]([N_floors][N_buttons]RequestState)
+	AssignedOrders   map[string][][]RequestState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
 	Id 		   string
@@ -97,15 +97,15 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 		(*e).Index = i
 	}
 	
-	AssignedOrders := make([][]int, N_floors)
+	AssignedOrders := make([][]RequestState, N_floors)
 	for i := range AssignedOrders {
-		AssignedOrders[i] = make([]int, N_buttons)
+		AssignedOrders[i] = make([]RequestState, N_buttons)
 	}
-	(e*).AssignedOrders = map[string]([N_floors][N_buttons]RequestState){id: AssginedOrders}
+	(*e).AssignedOrders = map[string][][]RequestState{id: AssignedOrders}
 
-	(*e).Requests = make([][]int, N_floors)
+	(*e).Requests = make([][]RequestState, N_floors)
 	for i := range (*e).Requests {
-		(*e).Requests[i] = make([]int, 2 + N_elevators)
+		(*e).Requests[i] = make([]RequestState, 2 + N_elevators)
 	}
 }
 
