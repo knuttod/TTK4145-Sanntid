@@ -2,6 +2,8 @@ package peers
 
 import (
 	"Heis/pkg/network/conn"
+	"Heis/pkg/types"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -17,8 +19,7 @@ type PeerUpdate struct {
 const interval = 15 * time.Millisecond
 const timeout = 500 * time.Millisecond
 
-func Transmitter(port int, id string, transmitEnable <-chan bool) {
-
+func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState *types.Elevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
@@ -28,14 +29,27 @@ func Transmitter(port int, id string, transmitEnable <-chan bool) {
 		case enable = <-transmitEnable:
 		case <-time.After(interval):
 		}
+
 		if enable {
-			conn.WriteTo([]byte(id), addr)
+			// Create elevator state message
+			elevatorStateMsg := types.ElevatorStateMsg{
+				Elevator: *elevatorState, // Pass by reference
+				Id:       id,
+			}
+
+			// Convert to JSON
+			data, err := json.Marshal(elevatorStateMsg)
+			if err != nil {
+				continue
+			}
+
+			// Send data
+			conn.WriteTo(data, addr)
 		}
 	}
 }
 
 func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
-
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -48,7 +62,13 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 		conn.SetReadDeadline(time.Now().Add(interval))
 		n, _, _ := conn.ReadFrom(buf[0:])
 
-		id := string(buf[:n])
+		var msg types.ElevatorStateMsg
+		err := json.Unmarshal(buf[:n], &msg)
+		if err != nil {
+			continue // Ignore invalid messages
+		}
+
+		id := msg.Id // Extract peer ID
 
 		// Adding new connection
 		p.New = ""
@@ -57,11 +77,10 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 				p.New = id
 				updated = true
 			}
-
 			lastSeen[id] = time.Now()
 		}
 
-		// Removing dead connection
+		// Removing dead connections
 		p.Lost = make([]string, 0)
 		for k, v := range lastSeen {
 			if time.Now().Sub(v) > timeout {
@@ -71,17 +90,21 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 			}
 		}
 
-		// Sending update
+		// Sending update (Only print IDs, not states)
 		if updated {
 			p.Peers = make([]string, 0, len(lastSeen))
 
-			for k, _ := range lastSeen {
+			for k := range lastSeen {
 				p.Peers = append(p.Peers, k)
 			}
 
 			sort.Strings(p.Peers)
 			sort.Strings(p.Lost)
+
 			peerUpdateCh <- p
+
+			// Print connection IDs only
+			fmt.Println("Connected peers:", p.Peers)
 		}
 	}
 }

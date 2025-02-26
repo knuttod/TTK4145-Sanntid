@@ -50,6 +50,8 @@ func main() {
 
 	elevio.Init("localhost:"+port, NumFloors)
 
+	var elevator types.Elevator
+
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
 	drv_obstr := make(chan bool)
@@ -67,12 +69,12 @@ func main() {
 	Tx := make(chan types.UdpMsg)
 	Rx := make(chan types.UdpMsg)
 
-	go peers.Transmitter(15647, id, peerTxEnable)
+	go peers.Transmitter(15647, id, peerTxEnable, &elevator)
 	go peers.Receiver(15647, peerUpdateCh)
 	go bcast.Transmitter(16569, Tx)
 	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
+	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
 	fmt.Println("Started")
