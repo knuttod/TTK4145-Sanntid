@@ -1,11 +1,13 @@
 package fsm
 
 import (
+	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	//"Heis/pkg/message"
+	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
-	"Heis/pkg/types"
-	"fmt"
 	"log"
+	"fmt"
 )
 
 // jonas
@@ -25,14 +27,21 @@ func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floo
 	}
 
 	for {
-		fmt.Println("State: ", elevator.Behaviour)
-
 		select {
-		case button_input := <-drv_buttons:
+		case button_input := <-order:
 			// send button press message
 
 			requestButtonPress(elevator, button_input.Floor, button_input.Button, drv_doorTimerStart, Tx, id)
+			// send unconfirmed message to OrderMerger
+			// When order is confirmed and is assigned from cost function calculations to this elevator send to request button press
+
+			// Need a way to tell others order is done
+
+			// message.TransmitButtonPress(e, button_input.Floor, button_input.Button, requestTx, (*e).Id)
+
 			log.Println("drv_buttons: %v", button_input)
+			fmt.Println("Button input: ", button_input)
+			requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
 		case current_floor := <-drv_floors:
 			floorArrival(elevator, current_floor, drv_doorTimerStart, Tx, id)
 			// Send clear floor message
@@ -40,16 +49,17 @@ func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floo
 			log.Println("drv_floors: %v", current_floor)
 		case obstruction := <-drv_obstr:
 			if obstruction {
-				elevator.Obstructed = true
+				(*e).Obstructed = true
 			} else {
-				elevator.Obstructed = false
-				drv_doorTimerStart <- elevator.Config.DoorOpenDuration_s
+				(*e).Obstructed = false
+				drv_doorTimerStart <- (*e).Config.DoorOpenDuration_s
 			}
 
 		case <-drv_doorTimerFinished:
 			if !elevator.Obstructed {
 				DoorTimeout(elevator, drv_doorTimerStart)
 				log.Println("drv_doortimer timed out")
+				DoorTimeout(e, drv_doorTimerStart)
 			}
 
 		case msg := <-Rx:
@@ -93,6 +103,23 @@ func Fsm(elevator *types.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floo
 				}
 			}
 
+		case msg := <-requestRx:
+			if msg.Id != (*e).Id { // Ignore messages from itself
+				log.Printf("Received remote button press: %+v\n", msg)
+				SetAllLightsOrder((*e).GlobalOrders, e)
+				//Act as if the button was pressed locally
+				//requestButtonPress(e, msg.Floor, msg.Button, drv_doorTimerStart)
+
+			} 
+			
+				
+			//if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id { // Ignore messages from itself
+				//log.Printf("Received remote button press: %+v\n", msg.ElevatorStateMsg)
+				// if msg.ElevatorStateMsg.Id == "elevator1" {
+				// 	setAllLights(msg.ElevatorStateMsg.Elevator)
+				// }
+				//fmt.Println("Floor,", *msg.ElevatorStateMsg.Elevator.Floor)
+			
 		}
 	}
 }

@@ -2,13 +2,16 @@ package main
 
 import (
 	"Heis/pkg/config"
+	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
+	"Heis/pkg/message"
+	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/bcast"
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
+	"Heis/pkg/orders"
 	"Heis/pkg/timer"
-	"Heis/pkg/types"
 	"flag"
 	"fmt"
 	"log"
@@ -17,6 +20,10 @@ import (
 
 //Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
 //!!!!!!!!!!!
+
+// Kanskje ha egne funksjoner som spawner andre go routines?? Typ Gruppere sammen de funksjonene som "jobber sammen" i en funksjon of sette opp channels of funksjoner i dem
+// Typ ha et tre med go funksjoner og grener som channels som hører sammen
+
 
 func main() {
 	// Elevator id can be anything. Here we pass it on the command line, using
@@ -45,8 +52,15 @@ func main() {
 	}
 	// Use the loaded configuration
 	NumFloors := cfg.NumFloors
-	// NumButtons := cfg.NumButtons
+	NumButtons := cfg.NumButtons
 	// NumFloors := 4
+
+	NumElevators := 3
+
+	var e elevator.Elevator
+	elevator.Elevator_init(&e, NumFloors, NumButtons, NumElevators, id)
+
+	
 
 	elevio.Init("localhost:"+port, NumFloors)
 
@@ -66,17 +80,35 @@ func main() {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	Tx := make(chan types.UdpMsg)
-	Rx := make(chan types.UdpMsg)
+	stateTx := make(chan msgTypes.ElevatorStateMsg)
+	stateRx := make(chan msgTypes.ElevatorStateMsg)	
+
+	requestTx := make(chan msgTypes.ButtonPressMsg)
+	requestRx := make(chan msgTypes.ButtonPressMsg)	//Kanskje ha buffer her. For å få inn meldinger fra flere heiser samtidig. 
 
 	go peers.Transmitter(15647, id, peerTxEnable, &elevator)
 	go peers.Receiver(15647, peerUpdateCh)
-	go bcast.Transmitter(16569, Tx)
-	go bcast.Receiver(16569, Rx)
 
 	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, peerUpdateCh, id)
+	go bcast.Transmitter(16569, stateTx)
+	go bcast.Receiver(16569, stateRx)
+	go bcast.Transmitter(16570, requestTx)
+	go bcast.Receiver(16570, requestRx)
+
+	LocalOrderRequest := make(chan elevator.Order)
+	LocalOrderTask := make(chan elevio.ButtonEvent)
+
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
+	
+	go message.TransmitState(&e, stateTx, id)
+	go orders.LocalButtonPressHandler(&e, drv_buttons, LocalOrderRequest)
+	go orders.GlobalOrderMerger(&e, stateRx, stateTx, LocalOrderRequest, LocalOrderTask)
+	// go orders.SyncGlobalWithLocalOrders(&e)
+	go orders.CheckForCompletedOrders(&e, LocalOrderRequest)
+	
+	go fsm.Fsm(&e, LocalOrderTask, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, requestTx, requestRx, peerTxEnable, peerUpdateCh)
+	
 	fmt.Println("Started")
 	for {
 		select {
@@ -85,11 +117,9 @@ func main() {
 			fmt.Printf("  Peers:    %q\n", p.Peers)
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
-		case a := <-Rx:
-			fmt.Printf("Received: %#v\n", a)
+		// case a := <-Rx:
+		// 	fmt.Printf("Received: %#v\n", a)
 		}
 	}
-
-	//	select {}
 
 }

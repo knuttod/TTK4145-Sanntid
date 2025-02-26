@@ -2,64 +2,62 @@ package fsm
 
 import (
 	"Heis/pkg/elevio"
-	"Heis/pkg/types"
-
-	"fmt"
-	"time"
+	"Heis/pkg/elevator"
+	//"fmt"
 )
 
-func fsm_init(e *types.Elevator) {
-	// initialize the (*e) struct
-	(*e).Floor = -1
-	(*e).Dirn = elevio.MD_Stop
-	(*e).Behaviour = types.EB_Idle
-	(*e).Config.ClearRequestVariant = types.CV_InDirn
-	(*e).Config.DoorOpenDuration_s = 3.0
-	(*e).Requests = make([][]bool, N_floors)
-	for i := range (*e).Requests {
-		(*e).Requests[i] = make([]bool, N_buttons)
-	}
-}
+// func fsm_init(e *elevator.Elevator) {
+// 	// initialize the (*e) struct
+// 	(*e).Floor = -2
+// 	(*e).Dirn = elevio.MD_Stop
+// 	(*e).Behaviour = elevator.EB_Idle
+// 	(*e).Config.ClearRequestVariant = elevator.CV_InDirn
+// 	(*e).Config.DoorOpenDuration_s = 3.0
+// 	(*e).LocalOrders = make([][]bool, N_floors)
+// 	for i := range (*e).LocalOrders {
+// 		(*e).LocalOrders[i] = make([]bool, N_buttons)
+// 	}
 
-func initBetweenFloors(e *types.Elevator) {
+// }
+
+func initBetweenFloors(e *elevator.Elevator) {
 	elevio.SetMotorDirection(elevio.MD_Down)
 	(*e).Dirn = elevio.MD_Down
-	(*e).Behaviour = types.EB_Moving
+	(*e).Behaviour = elevator.EB_Moving
 }
 
-func requestButtonPress(e *types.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, Tx chan types.UdpMsg, id string) {
-	//print functions??
+func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64) {
 
 	switch (*e).Behaviour {
-	case types.EB_DoorOpen:
+	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			//drv_doorTimer <- 0.0
 		} else {
-			(*e).Requests[btn_floor][btn_type] = true
+			(*e).LocalOrders[btn_floor][btn_type] = 2
 		}
 
-	case types.EB_Moving:
-		(*e).Requests[btn_floor][btn_type] = true
+	case elevator.EB_Moving:
+		(*e).LocalOrders[btn_floor][btn_type] = 2
 
-	case types.EB_Idle:
-		(*e).Requests[btn_floor][btn_type] = true
-		var pair DirnBehaviourPair = chooseDirection((*e))
+	case elevator.EB_Idle:
+		(*e).LocalOrders[btn_floor][btn_type] = 2
+		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
 
 		switch pair.Behaviour {
-		case types.EB_DoorOpen:
+		case elevator.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			//drv_doorTimer <- 0.0
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			(*e) = ClearAtCurrentFloor((*e))
 
-		case types.EB_Moving:
+		case elevator.EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)
 			//clear something at this floor??
 
-		case types.EB_Idle:
+		case elevator.EB_Idle:
 			//need something here?
 		}
 
@@ -114,27 +112,29 @@ func floorArrival(e *types.Elevator, newFloor int, drv_doorTimer chan float64, T
 	}
 }
 
-func DoorTimeout(e *types.Elevator, drv_doorTimer chan float64) {
+func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64) {
 
 	switch (*e).Behaviour {
-	case types.EB_DoorOpen:
-		var pair DirnBehaviourPair = chooseDirection((*e))
+	case elevator.EB_DoorOpen:
+		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
 
 		switch (*e).Behaviour {
-		case types.EB_DoorOpen:
+		case elevator.EB_DoorOpen:
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s //????
 			//drv_doorTimer <- 0.0
 			(*e) = ClearAtCurrentFloor((*e))
-			setAllLights(e)
+			// setAllLights(e)
+			SetAllLightsOrder((*e).GlobalOrders, e)
 
 		//lagt inn selv
-		case types.EB_Moving:
+		case elevator.EB_Moving:
+			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection((*e).Dirn)
 		//
 
-		case types.EB_Idle:
+		case elevator.EB_Idle:
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection((*e).Dirn)
 
@@ -142,16 +142,34 @@ func DoorTimeout(e *types.Elevator, drv_doorTimer chan float64) {
 	}
 }
 
-func setAllLights(e *types.Elevator) {
+func setAllLights(e *elevator.Elevator) {
 	//set ligths
 	for floor := 0; floor < N_floors; floor++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.Requests[floor][btn] {
+			if e.LocalOrders[floor][btn] == 2{
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 			} else {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 			}
 		}
+	}
+}
+
+func SetAllLightsOrder(Orders [][]int, e *elevator.Elevator) {
+	//set ligths
+	for floor := range Orders {
+		for btn := 0; btn < 2; btn++ {
+			if Orders[floor][btn] == 2{
+				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
+			} else {
+				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
+			}
+		}
+		if Orders[floor][(*e).Index +1] == 2{
+				elevio.SetButtonLamp(elevio.ButtonType(2), floor, true)
+			} else {
+				elevio.SetButtonLamp(elevio.ButtonType(2), floor, false)
+			}
 	}
 }
 
