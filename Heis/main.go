@@ -5,7 +5,6 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
-	"Heis/pkg/message"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/bcast"
 	"Heis/pkg/network/localip"
@@ -64,7 +63,6 @@ func main() {
 
 	elevio.Init("localhost:"+port, NumFloors)
 
-	var elevator types.Elevator
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -79,31 +77,36 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
-	elevatorStateCh := make(chan types.ElevatorStateMsg)
+	elevatorStateCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
-	stateTx := make(chan msgTypes.ElevatorStateMsg)
-	stateRx := make(chan msgTypes.ElevatorStateMsg)	
 
-	requestTx := make(chan msgTypes.ButtonPressMsg)
-	requestRx := make(chan msgTypes.ButtonPressMsg)	//Kanskje ha buffer her. For å få inn meldinger fra flere heiser samtidig. 
+	Tx := make(chan msgTypes.UdpMsg)
+	Rx := make(chan msgTypes.UdpMsg)
 
-	go peers.Transmitter(15647, id, peerTxEnable, &elevator)
+	go peers.Transmitter(15647, id, peerTxEnable, &e)
 	go peers.Receiver(15647, peerUpdateCh, elevatorStateCh)
 	go bcast.Transmitter(16569, Tx)
 	go bcast.Receiver(16569, Rx)
 
-	go fsm.Fsm(&elevator, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, elevatorStateCh, id)
+	remoteElevators := make(map[string]elevator.Elevator)
+
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
 	
-	go message.TransmitState(&e, stateTx, id)
+	// go message.TransmitState(&e, stateTx, id)
 	// go orders.LocalButtonPressHandler(&e, drv_buttons, LocalOrderRequest)
 	// go orders.GlobalOrderMerger(&e, stateRx, stateTx, LocalOrderRequest, LocalOrderTask)
 	// go orders.SyncGlobalWithLocalOrders(&e)
 	// go orders.CheckForCompletedOrders(&e, LocalOrderRequest)
-	
-	go fsm.Fsm(&e, LocalOrderTask, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, requestTx, requestRx, peerTxEnable, peerUpdateCh)
-	
+
+	localAssignedOrder := make(chan elevio.ButtonEvent)
+	localRequest := make(chan elevio.ButtonEvent)
+	stateUpdated := make(chan bool)
+
+	go fsm.Fsm(&e, &remoteElevators, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, elevatorStateCh, id, localAssignedOrder, localRequest, stateUpdated)
+	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, stateUpdated)
+
+
 	fmt.Println("Started")
 	for {
 		select {

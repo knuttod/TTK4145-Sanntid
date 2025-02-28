@@ -5,75 +5,73 @@ import (
 	"Heis/pkg/elevio"
 	//"Heis/pkg/message"
 	"Heis/pkg/msgTypes"
-	"Heis/pkg/network/peers"
-	"Heis/pkg/orders"
+	//"Heis/pkg/network/peers"
+	// "Heis/pkg/orders"
 	"log"
-	"fmt"
+	// "fmt"
 )
 
 // jonas
 const N_floors = 4
 const N_buttons = 3
 
-func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan types.UdpMsg, Rx chan types.UdpMsg, peerTxEnable chan bool, elevatorStateCh chan types.ElevatorStateMsg, id string) {
+func Fsm(elev *elevator.Elevator, remoteElevators * map[string]elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, Tx chan msgTypes.UdpMsg, Rx chan msgTypes.UdpMsg, peerTxEnable chan bool, elevatorStateCh chan msgTypes.ElevatorStateMsg, id string, localAssignedOrder, localRequest chan elevio.ButtonEvent, stateUpdated chan bool) {
 
-	remoteElevators := make(map[string]elevator.Elevator)
+	// remoteElevators := make(map[string]elevator.Elevator)
 
 
 	//Kanskje ikke så robust, uten bruk av channelen
+	// Får også problemer med synkronisering med denne
 	if elevio.GetFloor() == -1 {
-		initBetweenFloors(elevator)
+		initBetweenFloors(elev)
 	}
 
 	for {
 		select {
 		case button_input := <-drv_buttons:
-			//assign
-			if orders.OrdersSynced(e, remoteElevators, button_input.floor, button_input.btn){
-				AssignOrder(remoteElevators, (*e).Id, button_input)
-			}
-			// send button press message
+			localRequest <- button_input
 
-			// send unconfirmed message to OrderMerger
-			// When order is confirmed and is assigned from cost function calculations to this elevator send to request button press
+		case Order := <- localAssignedOrder:
+			requestButtonPress(elev, Order.Floor, Order.Button, drv_doorTimerStart, Tx, (*elev).Id)	
 
-			// Need a way to tell others order is done
-
-			// message.TransmitButtonPress(e, button_input.Floor, button_input.Button, requestTx, (*e).Id)
-
-			log.Println("drv_buttons: %v", button_input)
-			fmt.Println("Button input: ", button_input)
-			// requestButtonPress(e, button_input.Floor, button_input.Button, drv_doorTimerStart)
-		case Order := <- startOrder:
-			requestButtonPress(e, startOrder.Floor, startOrder.Button, drv_doorTimerStart)
-		
 		case current_floor := <-drv_floors:
-			floorArrival(elevator, current_floor, drv_doorTimerStart, Tx, id)
+			floorArrival(elev, current_floor, drv_doorTimerStart, Tx, id)
 			// Send clear floor message
-
+			
 			log.Println("drv_floors: %v", current_floor)
 		case obstruction := <-drv_obstr:
 			if obstruction {
-				(*e).Obstructed = true
-			} else {
-				(*e).Obstructed = false
-				drv_doorTimerStart <- (*e).Config.DoorOpenDuration_s
-			}
+				(*elev).Obstructed = true
+				} else {
+					(*elev).Obstructed = false
+					drv_doorTimerStart <- (*elev).Config.DoorOpenDuration_s
+				}
+				
+			case <-drv_doorTimerFinished:
+				if !elev.Obstructed {
+					DoorTimeout(elev, drv_doorTimerStart)
+					log.Println("drv_doortimer timed out")
+					DoorTimeout(elev, drv_doorTimerStart)
+				}
+			
+			
+			
+			case elevatorState := <-elevatorStateCh:
+			if elevatorState.Id != (*elev).Id {
+				(*remoteElevators)[elevatorState.Id] = elevatorState.Elevator
+				// fmt.Println("Updated remoteElevators for ID:", elevatorState.Id)
+				// Try merging requests
+				remoteElevator, exists := (*remoteElevators)[elevatorState.Id]
+				if exists {
+					//log.Println("Merging requests for elevator:", elevatorState.Id)
 
-		case <-drv_doorTimerFinished:
-			if !elevator.Obstructed {
-				DoorTimeout(elevator, drv_doorTimerStart)
-				log.Println("drv_doortimer timed out")
-				DoorTimeout(e, drv_doorTimerStart)
-			}
-		case elevatorState := <-elevatorStateCh:
-			remoteElevators[elevatorState.Id] = elevatorState.Elevator
-			// fmt.Println("Updated remoteElevators for ID:", elevatorState.Id)
-			// Try merging requests
-			remoteElevator, exists := remoteElevators[elevatorState.Id]
-			if exists {
-				log.Println("Merging requests for elevator:", elevatorState.Id)
-				mergeRequests(elevator, remoteElevator)
+					_, exists := (*elev).AssignedOrders[elevatorState.Id]
+					if !exists {
+						(*elev).AssignedOrders[elevatorState.Id] = remoteElevator.AssignedOrders[elevatorState.Id]
+					}
+					// mergeRequests(elev, remoteElevator)
+					sendStates(elev, remoteElevator, stateUpdated)
+				}
 			}
 			// case msg := <-Rx:
 			// if msg.ButtonPressMsg != nil && msg.ButtonPressMsg.Id != id {
@@ -115,23 +113,6 @@ func Fsm(elevator *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_f
 			// 	log.Println("No remote elevator state found for ID:", msg.ElevatorStateMsg.Id)
 			// }
 			// }
-
-		case msg := <-requestRx:
-			if msg.Id != (*e).Id { // Ignore messages from itself
-				log.Printf("Received remote button press: %+v\n", msg)
-				SetAllLightsOrder((*e).GlobalOrders, e)
-				//Act as if the button was pressed locally
-				//requestButtonPress(e, msg.Floor, msg.Button, drv_doorTimerStart)
-
-			} 
-			
-				
-			//if msg.ElevatorStateMsg != nil && msg.ElevatorStateMsg.Id != id { // Ignore messages from itself
-				//log.Printf("Received remote button press: %+v\n", msg.ElevatorStateMsg)
-				// if msg.ElevatorStateMsg.Id == "elevator1" {
-				// 	setAllLights(msg.ElevatorStateMsg.Elevator)
-				// }
-				//fmt.Println("Floor,", *msg.ElevatorStateMsg.Elevator.Floor)
 			
 		}
 	}

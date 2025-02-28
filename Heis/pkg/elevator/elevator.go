@@ -5,13 +5,6 @@ import (
 	"strconv"
 )
 
-type ElevatorBehaviour int
-
-const (
-	EB_Idle ElevatorBehaviour = iota
-	EB_DoorOpen
-	EB_Moving
-)
 
 type ClearRequestVariant int
 
@@ -25,23 +18,24 @@ type RequestState int
 const (
 	None      RequestState = 0
 	Order     RequestState = 1
-	Comfirmed RequestState = 2
+	Confirmed RequestState = 2
 	Complete  RequestState = 3
 )
 
-type Behaviour int
+type ElevatorBehaviour int
 
 const (
-	Idle        Behaviour = 0
-	DoorOpen    Behaviour = 1
-	Moving      Behaviour = 2
-	Unavailable Behaviour = 3
+	EB_Idle        ElevatorBehaviour = 0
+	EB_DoorOpen    ElevatorBehaviour = 1
+	EB_Moving      ElevatorBehaviour = 2
+	EB_Unavailable ElevatorBehaviour = 3
 )
 
 type Elevator struct {
 	Floor      int
 	Dirn       elevio.MotorDirection
-	Requests   [][]RequestState		//acts as cyclic counter
+	Orders   [][]RequestState		//acts as cyclic counter
+	// Map er egentlig litt lite effektivt da man ikke kan opdatere deler av verdien på en key, men heller må bare gi en helt ny verdi/struct. 
 	AssignedOrders   map[string][][]RequestState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
@@ -103,9 +97,9 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 	}
 	(*e).AssignedOrders = map[string][][]RequestState{id: AssignedOrders}
 
-	(*e).Requests = make([][]RequestState, N_floors)
-	for i := range (*e).Requests {
-		(*e).Requests[i] = make([]RequestState, 2 + N_elevators)
+	(*e).Orders = make([][]RequestState, N_floors)
+	for i := range (*e).Orders {
+		(*e).Orders[i] = make([]RequestState, N_buttons)
 	}
 }
 

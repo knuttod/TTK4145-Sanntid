@@ -1,4 +1,4 @@
-package cost
+package orders
 
 import (
 	"Heis/pkg/elevator"
@@ -9,36 +9,43 @@ import (
 const TRAVEL_TIME = 10
 const NumElevators = 4
 
-func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
-	if elevator.Behaviour(elev.Behaviour) != elevator.Unavailable {
-		e := new(elevator.Elevator)
-		*e = *elev //lager en kopi av heisen for å estimere kjøretiden når man legger til den nye orderen
-		e.AssignedOrders[req.Floor][req.Button] = elevator.Comfirmed
+func cost(elev elevator.Elevator, req elevio.ButtonEvent) int {
+	if elevator.ElevatorBehaviour(elev.Behaviour) != elevator.EB_Unavailable {
+		// e := new(elevator.Elevator)
+		// *e = *elev //lager en kopi av heisen for å estimere kjøretiden når man legger til den nye orderen
+
+		// Siden maps i go bare har shallow copy vil endringer av aksessering av value ikke endre den faktiske i mapet
+		e := elev
+		e.Orders[req.Floor][req.Button] = elevator.Confirmed
 
 		duration := 0
 
 		switch e.Behaviour {
 		case elevator.EB_Idle:
-			fsm.ChooseDirection((*e))
+			pair := fsm.ChooseDirection(e)
+			e.Dirn = pair.Dirn
+			e.Behaviour = pair.Behaviour
 			//requestChooseDirnection(e)
 			if e.Dirn == elevio.MD_Stop {
-				return duration //Dersom IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
+				return duration //Dersom EB_IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
 
 			}
 		case elevator.EB_Moving:
 			duration += TRAVEL_TIME / 2 //dersom heisen er i beveglse legger vi til en kostand
 			e.Floor += int(e.Dirn)
 		case elevator.EB_DoorOpen:
-			duration -= elevator.DoorOpenDuration / 2
+			duration -= int(e.Config.DoorOpenDuration_s) / 2
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
 			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
 
 		}
 		for {
-			if fsm.ShouldStop((*e)) {
-				fsm.ClearAtCurrentFloor(*e)
-				duration += elevator.DoorOpenDuration
-				fsm.ChooseDirection(*e)
+			if fsm.ShouldStop(e) {
+				e = fsm.ClearAtCurrentFloor(e)
+				duration += int(e.Config.DoorOpenDuration_s)
+				pair := fsm.ChooseDirection(e)
+				e.Dirn = pair.Dirn
+				e.Behaviour = pair.Behaviour
 				if e.Dirn == elevio.MD_Stop {
 					return duration //returner duration når den simulerte heisen har kommet til en stopp
 				}
@@ -48,7 +55,7 @@ func Cost(elev *elevator.Elevator, req elevio.ButtonEvent) int {
 		}
 
 	}
-	return 999 //returnerer høy kostnad dersom heisen er unavailable
+	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
 }
 
 // func AssignedOrdersAbove(elev elevator.DistributorElevator) bool {

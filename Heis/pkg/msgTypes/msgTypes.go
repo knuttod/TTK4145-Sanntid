@@ -6,11 +6,11 @@ import (
 )
 
 
-// type UdpMsg struct {
-// 	Message        string
-// 	Iter           int
-// 	ElevatorStateMsg *ElevatorStateMsg // Pointer to ButtonPressMsg, nil if not a button press
-// }
+type UdpMsg struct {
+	Message        string
+	Iter           int
+	ElevatorStateMsg *ElevatorStateMsg // Pointer to ButtonPressMsg, nil if not a button press
+}
 
 type ButtonPressMsg struct {
 	Message        string
