@@ -16,11 +16,12 @@ func orderMerger(e *elevator.Elevator, remoteElevators map[string]elevator.Eleva
 	var currentState elevator.RequestState
 	var updateState elevator.RequestState
 
-	for id, _ := range remoteElevators{
+	// for id, _ := range remoteElevators{
+	for id, _ := range (*e).AssignedOrders {	
 		for floor := range N_floors{
 			for btn := range N_buttons {
 				for _, elev := range remoteElevators {
-					fmt.Println(id)
+					// fmt.Println(id)
 					currentState = (*e).AssignedOrders[id][floor][btn]
 					updateState = elev.AssignedOrders[id][floor][btn]
 
@@ -149,6 +150,7 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 			// temp[btn_input.Floor][btn_input.Button] = elevator.Order
 			// (*e).AssignedOrders["heis1"] = temp
 		case <- externalStateUpdate:
+			//funksjon for å opdatere remoteElevators og assignedElevators
 			orderMerger(e, *remoteElevators)
 		}
 		// case for disconnection or timout for elevator to reassign orders

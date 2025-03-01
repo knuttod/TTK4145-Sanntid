@@ -8,14 +8,14 @@ import (
 )
 
 
-func TransmitState(e *elevator.Elevator, Tx chan msgTypes.ElevatorStateMsg, id string) {
+func TransmitState(e *elevator.Elevator, Tx chan msgTypes.UdpMsg, id string) {
 	elevatorStateMsg := msgTypes.ElevatorStateMsg{
 			Elevator: *e,
 			Id:       id,
 		}
 	for {
 		//Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
-		Tx <- elevatorStateMsg
+		Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
 		time.Sleep(10 * time.Millisecond)
 	}
 }

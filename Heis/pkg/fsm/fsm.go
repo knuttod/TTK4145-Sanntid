@@ -71,9 +71,13 @@ func Fsm(elev *elevator.Elevator, remoteElevators * map[string]elevator.Elevator
 					for id, _ := range *remoteElevators {
 						_, exists := (*elev).AssignedOrders[id]
 						if !exists {
+							fmt.Println("Wrong update")
 							(*elev).AssignedOrders[id] = remoteElevator.AssignedOrders[elevatorState.Id]
 						}
 					}
+
+					fmt.Println("local", (*elev).AssignedOrders)
+					fmt.Println("remote", remoteElevator.AssignedOrders)
 				
 					
 					// mergeRequests(elev, remoteElevator)

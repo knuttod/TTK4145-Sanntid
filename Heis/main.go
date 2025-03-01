@@ -11,6 +11,7 @@ import (
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
 	"Heis/pkg/timer"
+	"Heis/pkg/message"
 	"flag"
 	"fmt"
 	"log"
@@ -93,7 +94,7 @@ func main() {
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
 	
-	// go message.TransmitState(&e, stateTx, id)
+	go message.TransmitState(&e, Tx, id)
 	// go orders.LocalButtonPressHandler(&e, drv_buttons, LocalOrderRequest)
 	// go orders.GlobalOrderMerger(&e, stateRx, stateTx, LocalOrderRequest, LocalOrderTask)
 	// go orders.SyncGlobalWithLocalOrders(&e)

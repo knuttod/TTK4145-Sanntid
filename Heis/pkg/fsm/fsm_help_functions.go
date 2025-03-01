@@ -6,6 +6,7 @@ import (
 	"Heis/pkg/msgTypes"
 	"fmt"
 	"reflect"
+	"sort"
 
 	// "reflect"
 	"time"
@@ -111,16 +112,16 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 			// **Log current state before sending**
 			// fmt.Printf("Elevator %s Requests before sending: %+v\n", id, e.Requests)
 
-			elevatorStateMsg := msgTypes.ElevatorStateMsg{
-				Elevator: *e,
-				Id:       id,
-			}
+			// elevatorStateMsg := msgTypes.ElevatorStateMsg{
+			// 	Elevator: *e,
+			// 	Id:       id,
+			// }
 
-			// Retransmit to reduce redundancy
-			for i := 0; i < 10; i++ {
-				Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
-				time.Sleep(10 * time.Millisecond)
-			}
+			// // Retransmit to reduce redundancy
+			// for i := 0; i < 10; i++ {
+			// 	Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
+			// 	time.Sleep(10 * time.Millisecond)
+			// }
 
 		}
 	}
@@ -239,8 +240,8 @@ func mergeRequests(local *elevator.Elevator, remote elevator.Elevator) {
 // }
 
 func sendStates(local *elevator.Elevator, remote elevator.Elevator, stateUpdated chan bool) {
-	//fmt.Println("local", (*local).AssignedOrders)
-	//fmt.Println("remote", remote.AssignedOrders)
+	// fmt.Println("local", (*local).AssignedOrders)
+	// fmt.Println("remote", remote.AssignedOrders)
 	// if reflect.DeepEqual((*local).AssignedOrders, remote.AssignedOrders) {
 	// 	stateUpdated <- true
 	// }
@@ -263,26 +264,28 @@ func sendStates(local *elevator.Elevator, remote elevator.Elevator, stateUpdated
 }
 
 func assignedOrdersCheck(remoteElevators map[string]elevator.Elevator, elevator elevator.Elevator) bool {
-	var remoteElevatorKeys []string
-	var assignedOrdersKeys []string
+	var localKeys []string
+	var remoteKeys []string
 	
-	for k, _ := range remoteElevators{
-		remoteElevatorKeys = append(remoteElevatorKeys, k)
-	}
 
 	for k, _ := range elevator.AssignedOrders{
-		assignedOrdersKeys = append(assignedOrdersKeys, k)
+		localKeys = append(localKeys, k)
 	}
-	if !reflect.DeepEqual(remoteElevatorKeys, assignedOrdersKeys) {
-		return false
-	}
+	// if !reflect.DeepEqual(remoteElevatorKeys, assignedOrdersKeys) {
+	// 	return false
+	// }
 	
 	for _, elev := range remoteElevators {
-		var assignedOrdersKeys []string
+		remoteKeys = []string{}
 		for k, _ := range elev.AssignedOrders{
-			assignedOrdersKeys = append(assignedOrdersKeys, k)
+			remoteKeys = append(remoteKeys, k)
 		}
-		if !reflect.DeepEqual(remoteElevatorKeys, assignedOrdersKeys) {
+		sort.Strings(localKeys)
+		sort.Strings(remoteKeys)
+		fmt.Println("local keys", localKeys)
+		fmt.Println("External keys", remoteKeys)
+
+		if !reflect.DeepEqual(localKeys, remoteKeys) {
 			return false
 		}
 	}
