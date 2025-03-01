@@ -3,6 +3,8 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"fmt"
+
 	//"Heis/pkg/message"
 	"Heis/pkg/msgTypes"
 	//"Heis/pkg/network/peers"
@@ -64,13 +66,21 @@ func Fsm(elev *elevator.Elevator, remoteElevators * map[string]elevator.Elevator
 				remoteElevator, exists := (*remoteElevators)[elevatorState.Id]
 				if exists {
 					//log.Println("Merging requests for elevator:", elevatorState.Id)
+					
 
-					_, exists := (*elev).AssignedOrders[elevatorState.Id]
-					if !exists {
-						(*elev).AssignedOrders[elevatorState.Id] = remoteElevator.AssignedOrders[elevatorState.Id]
+					for id, _ := range *remoteElevators {
+						_, exists := (*elev).AssignedOrders[id]
+						if !exists {
+							(*elev).AssignedOrders[id] = remoteElevator.AssignedOrders[elevatorState.Id]
+						}
 					}
+				
+					
 					// mergeRequests(elev, remoteElevator)
-					sendStates(elev, remoteElevator, stateUpdated)
+					if assignedOrdersCheck(*remoteElevators, *elev){
+						fmt.Println("statue")
+						sendStates(elev, remoteElevator, stateUpdated)
+					}
 				}
 			}
 			// case msg := <-Rx:

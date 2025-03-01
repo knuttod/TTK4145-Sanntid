@@ -16,12 +16,14 @@ func orderMerger(e *elevator.Elevator, remoteElevators map[string]elevator.Eleva
 	var currentState elevator.RequestState
 	var updateState elevator.RequestState
 
-	for id, _ := range (*e).AssignedOrders {
+	for id, _ := range remoteElevators{
 		for floor := range N_floors{
 			for btn := range N_buttons {
 				for _, elev := range remoteElevators {
+					fmt.Println(id)
 					currentState = (*e).AssignedOrders[id][floor][btn]
 					updateState = elev.AssignedOrders[id][floor][btn]
+
 					if updateState - currentState == 1 || (updateState == elevator.None && currentState == elevator.Complete) {
 						temp := (*e).AssignedOrders[id]
 						temp[floor][btn] = updateState
