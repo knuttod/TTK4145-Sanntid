@@ -23,12 +23,18 @@ const N_buttons = 3
 // and sends an ButtonEvent on localAssignedOrder channel if this eleveator should take order
 // Updates local assignedOrders from a remoteElevator sent on elevatorStateCh.
 // Also checks if an order to be done by this elevator should be started or not
-func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Elevator, localAssignedOrder, localRequest chan elevio.ButtonEvent, elevatorStateCh chan msgTypes.ElevatorStateMsg) {
+func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Elevator, 
+	localAssignedOrder, localRequest chan elevio.ButtonEvent, elevatorStateCh chan msgTypes.ElevatorStateMsg, completedOrderCH chan elevio.ButtonEvent) {
 	var activeLocalOrders [N_floors][N_buttons]bool
 	for {
 		select {
 		case btn_input := <- localRequest:
 			assignOrder(e, *remoteElevators, btn_input)
+
+		case completed_order := <- completedOrderCH:
+			temp := (*e).AssignedOrders[(*e).Id]
+			temp[completed_order.Floor][completed_order.Button] = elevator.Confirmed
+			(*e).AssignedOrders[(*e).Id] = temp
 		
 		case remoteElevatorState := <-elevatorStateCh:
 			if remoteElevatorState.Id != (*e).Id {

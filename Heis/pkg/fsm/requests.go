@@ -129,27 +129,47 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevio.
 }
 
 // Få inn funksjonaliltet for å sende eller opdatere globale orders når denne blir kjørt
-func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
+func ClearAtCurrentFloor(e elevator.Elevator, completedOrder chan elevio.ButtonEvent) elevator.Elevator {
 	switch e.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
 			e.LocalOrders[e.Floor][btn] = false
 			// send to orders
+			completedOrder <- elevio.ButtonEvent {
+				Floor: e.Floor,
+				Button: elevio.ButtonType(btn),
+			}
 		}
 	case elevator.CV_InDirn:
 		e.LocalOrders[e.Floor][elevio.BT_Cab] = false
 		switch e.Dirn {
 		case elevio.MD_Up:
-			if (!Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] != true) {
+			if (!Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] == false) {
 				e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+				completedOrder <- elevio.ButtonEvent {
+					Floor: e.Floor,
+					Button: elevio.BT_HallDown,
+				}
 			}
 			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+			completedOrder <- elevio.ButtonEvent {
+				Floor: e.Floor,
+				Button: elevio.BT_HallUp,
+			}
 
 		case elevio.MD_Down:
-			if (!Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] != true) {
+			if (!Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] == false) {
 				e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+				completedOrder <- elevio.ButtonEvent {
+					Floor: e.Floor,
+					Button: elevio.BT_HallUp,
+				}
 			}
 			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+			completedOrder <- elevio.ButtonEvent {
+				Floor: e.Floor,
+				Button: elevio.BT_HallDown,
+			}
 		// case elevio.MD_Stop:
 		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
 		// 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
@@ -158,36 +178,17 @@ func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
 			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
 			//e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+			completedOrder <- elevio.ButtonEvent {
+				Floor: e.Floor,
+				Button: elevio.BT_HallDown,
+			}
+			completedOrder <- elevio.ButtonEvent {
+				Floor: e.Floor,
+				Button: elevio.BT_HallUp,
+			}
 		}
 	default:
 
 	}
 	return e
 }
-
-// // Funker ikke som den skal den fjerner alt på samme etasje, tar ikke hensyn til rettning for øyeblikket.
-// func ClearFloor(e *types.Elevator, floor int, Dirn elevio.MotorDirection) {
-// 	switch Dirn {
-// 	case elevio.MD_Up:
-// 		if (!Above(e)) && (!e.Requests[e.Floor][elevio.BT_HallUp]) { //trenger en workaround for Above()
-// 			e.Requests[floor][elevio.BT_HallDown] = false
-// 		}
-// 		e.Requests[floor][elevio.BT_HallUp] = false
-
-// 	case elevio.MD_Down:
-// 		if (!Below(e)) && (!e.Requests[e.Floor][elevio.BT_HallDown]) { // trenger en workaround for Below() også
-// 			e.Requests[floor][elevio.BT_HallUp] = false
-// 		}
-// 		e.Requests[floor][elevio.BT_HallDown] = false
-// 	// case elevio.MD_Stop:
-// 	// 	e.Requests[e.Floor][elevio.BT_HallUp] = false
-// 	// 	e.Requests[e.Floor][elevio.BT_HallDown] = false
-// 	// 	e.Requests[e.Floor][elevio.BT_Cab] = false
-// 	default:
-// 		e.Requests[floor][elevio.BT_HallUp] = false
-// 		e.Requests[floor][elevio.BT_HallDown] = false
-// 		//e.Requests[e.Floor][elevio.BT_Cab] = false
-// 	}
-
-// 	setAllLights(e)
-// }

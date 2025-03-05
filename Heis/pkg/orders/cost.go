@@ -9,14 +9,8 @@ import (
 const TRAVEL_TIME = 10
 const NumElevators = 4
 
-func cost(elev elevator.Elevator, req elevio.ButtonEvent) int {
-	if elevator.ElevatorBehaviour(elev.Behaviour) != elevator.EB_Unavailable {
-		// e := new(elevator.Elevator)
-		// *e = *elev //lager en kopi av heisen for å estimere kjøretiden når man legger til den nye orderen
-
-		// Siden maps i go bare har shallow copy vil endringer av aksessering av value ikke endre den faktiske i mapet
-		e := elev
-		e.Orders[req.Floor][req.Button] = elevator.Confirmed
+func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
+	if elevator.ElevatorBehaviour(e.Behaviour) != elevator.EB_Unavailable {
 
 		duration := 0
 
@@ -25,7 +19,6 @@ func cost(elev elevator.Elevator, req elevio.ButtonEvent) int {
 			pair := fsm.ChooseDirection(e)
 			e.Dirn = pair.Dirn
 			e.Behaviour = pair.Behaviour
-			//requestChooseDirnection(e)
 			if e.Dirn == elevio.MD_Stop {
 				return duration //Dersom EB_IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
 
@@ -41,11 +34,13 @@ func cost(elev elevator.Elevator, req elevio.ButtonEvent) int {
 		}
 		for {
 			if fsm.ShouldStop(e) {
-				e = fsm.ClearAtCurrentFloor(e)
+				e = fsm.ClearAtCurrentFloor(e, nil)
 				duration += int(e.Config.DoorOpenDuration_s)
+				// might not need this?
 				pair := fsm.ChooseDirection(e)
 				e.Dirn = pair.Dirn
 				e.Behaviour = pair.Behaviour
+				// ...
 				if e.Dirn == elevio.MD_Stop {
 					return duration //returner duration når den simulerte heisen har kommet til en stopp
 				}
@@ -57,79 +52,3 @@ func cost(elev elevator.Elevator, req elevio.ButtonEvent) int {
 	}
 	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
 }
-
-// func AssignedOrdersAbove(elev elevator.DistributorElevator) bool {
-// 	for f := elev.Floor + 1; f < elevator.NumFloors; f++ {
-// 		for btn := range elev.AssignedOrders[f] {
-// 			if elev.AssignedOrders[f][btn] == elevator.Comfirmed {
-// 				return true
-// 			}
-// 		}
-// 	}
-// 	return false
-// }
-
-// func AssignedOrdersBelow(elev elevator.DistributorElevator) bool {
-// 	for f := 0; f < elev.Floor; f++ {
-// 		for btn := range elev.AssignedOrders[f] {
-// 			if elev.AssignedOrders[f][btn] == elevator.Comfirmed {
-// 				return true
-// 			}
-// 		}
-// 	}
-// 	return false
-// }
-
-// func requestClearAtCurrentFloor(elev *elevator.DistributorElevator) {
-// 	elev.AssignedOrders[elev.Floor][int(elevio.BT_Cab)] = elevator.None
-// 	switch {
-// 	case elev.Dirn == elevator.Up:
-// 		elev.AssignedOrders[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
-// 		if !AssignedOrdersAbove(*elev) {
-// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
-// 		}
-// 	case elev.Dirn == elevator.Down:
-// 		elev.AssignedOrders[elev.Floor][int(elevio.BT_HallDown)] = elevator.None
-// 		if !AssignedOrdersBelow(*elev) {
-// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_HallUp)] = elevator.None
-// 		}
-// 	}
-// }
-
-// func AssignedOrdershouldStop(elev elevator.DistributorElevator) bool {
-// 	switch {
-// 	case elev.Dirn == elevator.Down:
-// 		return elev.AssignedOrders[elev.Floor][int(elevio.BT_HallDown)] == elevator.Comfirmed ||
-// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
-// 			!AssignedOrdersBelow(elev)
-// 	case elev.Dirn == elevator.Up:
-// 		return elev.AssignedOrders[elev.Floor][int(elevio.BT_HallUp)] == elevator.Comfirmed ||
-// 			elev.AssignedOrders[elev.Floor][int(elevio.BT_Cab)] == elevator.Comfirmed ||
-// 			!AssignedOrdersAbove(elev)
-// 	default:
-// 		return true
-// 	}
-// }
-
-// func requestChooseDirnection(elev *elevator.DistributorElevator) {
-// 	switch elev.Dirn {
-// 	case elevator.Up:
-// 		if AssignedOrdersAbove(*elev) {
-// 			elev.Dirn = elevator.Up
-// 		} else if AssignedOrdersBelow(*elev) {
-// 			elev.Dirn = elevator.Down
-// 		} else {
-// 			elev.Dirn = elevator.Stop
-// 		}
-// 	case elevator.Down:
-// 		fallthrough
-// 	case elevator.Stop:
-// 		if AssignedOrdersBelow(*elev) {
-// 			elev.Dirn = elevator.Down
-// 		} else if AssignedOrdersAbove(*elev) {
-// 			elev.Dirn = elevator.Up
-// 		} else {
-// 			elev.Dirn = elevator.Stop
-// 		}
-// 	}
-// }
