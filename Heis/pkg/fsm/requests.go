@@ -14,7 +14,7 @@ import (
 func Above(e elevator.Elevator) bool {
 	for f := e.Floor + 1; f < N_floors; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.AssignedOrders[e.Id][f][btn] == elevator.Confirmed {
+			if e.LocalOrders[f][btn] == true {
 				return true
 			}
 		}
@@ -26,7 +26,7 @@ func Above(e elevator.Elevator) bool {
 func Below(e elevator.Elevator) bool {
 	for f := 0; f < e.Floor; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.AssignedOrders[e.Id][f][btn] == elevator.Confirmed {
+			if e.LocalOrders[f][btn] == true {
 				return true
 			}
 		}
@@ -36,7 +36,7 @@ func Below(e elevator.Elevator) bool {
 
 func Here(e elevator.Elevator) bool {
 	for btn := 0; btn < N_buttons; btn++ {
-		if e.AssignedOrders[e.Id][e.Floor][btn] == elevator.Confirmed {
+		if e.LocalOrders[e.Floor][btn] == true {
 			return true
 		}
 	}
@@ -86,14 +86,14 @@ func ChooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
 func ShouldStop(e elevator.Elevator) bool {
 	switch e.Dirn {
 	case elevio.MD_Down:
-		if (e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallDown] == elevator.Confirmed) || (e.AssignedOrders[e.Id][e.Floor][elevio.BT_Cab] == elevator.Confirmed) || (!Below(e)) {
+		if (e.LocalOrders[e.Floor][elevio.BT_HallDown] == true) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == true) || (!Below(e)) {
 			return true
 		} else {
 			return false
 		}
 
 	case elevio.MD_Up:
-		if (e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallUp] == elevator.Confirmed) || (e.AssignedOrders[e.Id][e.Floor][elevio.BT_Cab] == elevator.Confirmed) || (!Above(e)) {
+		if (e.LocalOrders[e.Floor][elevio.BT_HallUp] == true) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == true) || (!Above(e)) {
 			return true
 		} else {
 			return false
@@ -133,30 +133,31 @@ func ClearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
 	switch e.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
-			e.AssignedOrders[e.Id][e.Floor][btn] = elevator.Complete
+			e.LocalOrders[e.Floor][btn] = false
+			// send to orders
 		}
 	case elevator.CV_InDirn:
-		e.AssignedOrders[e.Id][e.Floor][elevio.BT_Cab] = elevator.Complete
+		e.LocalOrders[e.Floor][elevio.BT_Cab] = false
 		switch e.Dirn {
 		case elevio.MD_Up:
-			if (!Above(e)) && (e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallUp] != elevator.Confirmed) {
-				e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallDown] = elevator.Complete
+			if (!Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] != true) {
+				e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
 			}
-			e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallUp] = elevator.Complete
+			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
 
 		case elevio.MD_Down:
-			if (!Below(e)) && (e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallDown] != elevator.Confirmed) {
-				e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallUp] = elevator.Complete
+			if (!Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] != true) {
+				e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
 			}
-			e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallDown] = elevator.Complete
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
 		// case elevio.MD_Stop:
-		// 	e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallUp] = elevator.Complete
-		// 	e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallDown] = elevator.Complete
-		// 	e.AssignedOrders[e.Id][e.Floor][elevio.BT_Cab] = elevator.Complete
+		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+		// 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+		// 	e.LocalOrders[e.Floor][elevio.BT_Cab] = false
 		default:
-			e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallUp] = elevator.Complete
-			e.AssignedOrders[e.Id][e.Floor][elevio.BT_HallDown] = elevator.Complete
-			//e.AssignedOrders[e.Id][e.Floor][elevio.BT_Cab] = elevator.Complete
+			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+			//e.LocalOrders[e.Floor][elevio.BT_Cab] = false
 		}
 	default:
 

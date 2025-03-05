@@ -34,14 +34,13 @@ const (
 type Elevator struct {
 	Floor      int
 	Dirn       elevio.MotorDirection
-	Orders   [][]RequestState		//acts as cyclic counter
+	LocalOrders     [][]bool		
 	// Map er egentlig litt lite effektivt da man ikke kan opdatere deler av verdien på en key, men heller må bare gi en helt ny verdi/struct. 
 	AssignedOrders   map[string][][]RequestState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
 	Id 		   string
 	Index 	   int
-	//ExternalElevators []Elevator	//Dette funker ikke, vet ikke hvorfor
 
 	Config struct { //type?
 		ClearRequestVariant ClearRequestVariant
@@ -97,9 +96,9 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 	}
 	(*e).AssignedOrders = map[string][][]RequestState{id: AssignedOrders}
 
-	(*e).Orders = make([][]RequestState, N_floors)
-	for i := range (*e).Orders {
-		(*e).Orders[i] = make([]RequestState, N_buttons)
+	(*e).LocalOrders = make([][]bool, N_floors)
+	for i := range (*e).LocalOrders {
+		(*e).LocalOrders[i] = make([]bool, N_buttons)
 	}
 }
 

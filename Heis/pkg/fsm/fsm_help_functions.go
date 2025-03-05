@@ -26,24 +26,22 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			//drv_doorTimer <- 0.0
 		} else {
-			(*e).Requests[btn_floor][btn_type] = true
+			(*e).LocalOrders[btn_floor][btn_type] = true
 		}
 
 	case elevator.EB_Moving:
-		(*e).Requests[btn_floor][btn_type] = true
+		(*e).LocalOrders[btn_floor][btn_type] = true
 
 	case elevator.EB_Idle:
-		(*e).Requests[btn_floor][btn_type] = true
-		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
+		(*e).LocalOrders[btn_floor][btn_type] = true
+		var pair elevator.DirnBehaviourPair = ChooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
 
 		switch pair.Behaviour {
 		case elevator.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
-			//drv_doorTimer <- 0.0
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			(*e) = ClearAtCurrentFloor((*e))
 
@@ -89,7 +87,7 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64) {
 
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:
-		var pair elevator.DirnBehaviourPair = chooseDirection((*e))
+		var pair elevator.DirnBehaviourPair = ChooseDirection((*e))
 		(*e).Dirn = pair.Dirn
 		(*e).Behaviour = pair.Behaviour
 
@@ -115,12 +113,12 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64) {
 }
 
 // Updates the elevator's button lights to reflect the current request states.
-// Turns on lights for active requests and turns them off otherwise.
+// Turns on lights for active LocalOrders and turns them off otherwise.
 func setAllLights(e *elevator.Elevator) {
 	//set ligths
 	for floor := 0; floor < N_floors; floor++ {
 		for btn := 0; btn < N_buttons; btn++ {
-			if e.Requests[floor][btn] {
+			if e.LocalOrders[floor][btn] {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 			} else {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
