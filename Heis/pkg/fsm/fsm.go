@@ -3,21 +3,17 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
 	"Heis/pkg/msgTypes"
-	
+	"fmt"
 )
-//define in config
+
+// define in config
 const N_floors = 4
 const N_buttons = 3
 
-
-
-
-func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr, 
-		drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool, 
-		Tx chan msgTypes.UdpMsg, id string, localAssignedOrder, localRequest chan elevio.ButtonEvent) {
-
+func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr,
+	drv_stop chan bool, drv_doorTimerStart chan float64, drv_doorTimerFinished chan bool,
+	Tx chan msgTypes.UdpMsg, id string, localAssignedOrder, localRequest chan elevio.ButtonEvent) {
 
 	if elevio.GetFloor() == -1 {
 		initBetweenFloors(elev)
@@ -29,33 +25,29 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 		case button_input := <-drv_buttons:
 			localRequest <- button_input
 
-
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
-		case Order := <- localAssignedOrder:
-			requestButtonPress(elev, Order.Floor, Order.Button, drv_doorTimerStart, Tx, (*elev).Id)	
+		case Order := <-localAssignedOrder:
+			requestButtonPress(elev, Order.Floor, Order.Button, drv_doorTimerStart, Tx, (*elev).Id)
 
-
-		
 		case current_floor := <-drv_floors:
 			floorArrival(elev, current_floor, drv_doorTimerStart, Tx, id)
-			
-			
+
 			fmt.Printf("drv_floors: %v", current_floor)
 		case obstruction := <-drv_obstr:
 			if obstruction {
 				(*elev).Obstructed = true
-				} else {
-					(*elev).Obstructed = false
-					drv_doorTimerStart <- (*elev).Config.DoorOpenDuration_s
-				}
-				
-			case <-drv_doorTimerFinished:
-				if !elev.Obstructed {
-					DoorTimeout(elev, drv_doorTimerStart)
-					fmt.Println("drv_doortimer timed out")
-					DoorTimeout(elev, drv_doorTimerStart)
-				}
-			
+			} else {
+				(*elev).Obstructed = false
+				drv_doorTimerStart <- (*elev).Config.DoorOpenDuration_s
+			}
+
+		case <-drv_doorTimerFinished:
+			if !elev.Obstructed {
+				DoorTimeout(elev, drv_doorTimerStart)
+				fmt.Println("drv_doortimer timed out")
+				DoorTimeout(elev, drv_doorTimerStart)
+			}
+
 		}
 	}
 }
