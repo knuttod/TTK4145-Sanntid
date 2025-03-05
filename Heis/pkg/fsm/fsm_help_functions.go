@@ -3,7 +3,6 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
 	//"fmt"
 )
 
@@ -72,7 +71,6 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 	switch (*e).Behaviour {
 	case elevator.EB_Moving:
 		if ShouldStop((*e)) {
-			fmt.Println("stop")
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
 			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders

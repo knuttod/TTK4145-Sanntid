@@ -5,7 +5,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 
-	//"fmt"
+	// "fmt"
 	//"strconv"
 )
 
@@ -83,8 +83,12 @@ func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elev
 		return
 	}
 	minCost := 99999
-	elevCost := cost(*e, order)
+	elev := *e
+	// fmt.Println("local b: ", (*e).LocalOrders)
+	elevCost := cost(elev, order)  //denne må endres på, oppdaterer local orders mappet, noe den ikke skal
+	// fmt.Println("local a: ", (*e).LocalOrders)
 	minCost = elevCost
+	// elevCost := 0
 	minElev := (*e).Id
 	for id, elev := range remoteElevators {
 		elevCost = cost(elev, order)

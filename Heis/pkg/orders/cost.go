@@ -35,7 +35,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 		}
 		for {
 			if fsm.ShouldStop(elev) {
-				elev = clearAtCurrentFloor(elev)
+				elev = costClearAtCurrentFloor(elev)
 				duration += int(elev.Config.DoorOpenDuration_s)
 				// might not need this?
 				pair := fsm.ChooseDirection(elev)
@@ -57,7 +57,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 
 
 //version without sending on completed channel to orders
-func clearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
+func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {

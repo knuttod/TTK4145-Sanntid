@@ -3,7 +3,6 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
 	//"fmt"
 )
 
@@ -82,7 +81,6 @@ func ShouldStop(e elevator.Elevator) bool {
 	switch e.Dirn {
 	case elevio.MD_Down:
 		if (e.LocalOrders[e.Floor][elevio.BT_HallDown] == true) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == true) || (!Below(e)) {
-			fmt.Println("md down")
 			return true
 		} else {
 			return false
@@ -90,7 +88,6 @@ func ShouldStop(e elevator.Elevator) bool {
 
 	case elevio.MD_Up:
 		if (e.LocalOrders[e.Floor][elevio.BT_HallUp] == true) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == true) || (!Above(e)) {
-			fmt.Println("md up")
 			return true
 		} else {
 			return false
@@ -98,7 +95,6 @@ func ShouldStop(e elevator.Elevator) bool {
 
 	case elevio.MD_Stop:
 	default:
-		fmt.Println("md stop")
 		return true
 
 	}

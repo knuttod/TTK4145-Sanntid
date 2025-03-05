@@ -4,3 +4,6 @@ Vi bør også se litt mer nøye på dokumentasjonen for eventuelle ting vi ikke 
 
 
 Ha cyclic counter på order states så man går fra unconfrimed til confirmed til done. Når man merger to order states f.eks unconfrimed og confirmed så blir begge til confirmed. Dersom man merger done og unconfrimed får man unconfrimed.
+
+Hvis vil bruke mutexes er dette en nice måte tror jeg
+https://go.dev/tour/concurrency/9

@@ -29,8 +29,14 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 	for {
 		select {
 		case btn_input := <- localRequest:
-			assignOrder(e, *remoteElevators, btn_input)
-
+			
+			//For å passe på at man ikke endrer på slicen. Slices er tydelighvis by reference, forstår ikke helt, men er det som er feilen
+			local := make([][]bool, len((*e).LocalOrders))
+			for i := range local {
+				local[i] = append([]bool(nil), (*e).LocalOrders[i]...) // Ensure deep copy
+			}
+			assignOrder(e, *remoteElevators, btn_input) //denne endrer på localOrders mapet. Ikke riktig
+			(*e).LocalOrders = local
 		case completed_order := <- completedOrderCH:
 			temp := (*e).AssignedOrders[(*e).Id]
 			temp[completed_order.Floor][completed_order.Button] = elevator.Complete
