@@ -9,10 +9,7 @@ import (
 	"reflect"
 )
 
-// This module orders, handles all orders, either comming from a local button press or from updates on nettwork.
-// All elevators on the nettwork keeps track of the other elevators order in a map called AssignedOrders, where the keys are elevator id's
-// and the values are a 2d slice of assigned orders for the corresponding elevator implemented as a cyclic counter. 
-// The module is responsible for synchronization of orders and assigning orders to the correct elevator.
+
 
 //temporarly, should be loaded from config
 const N_floors = 4
@@ -31,6 +28,7 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 		case btn_input := <- localRequest:
 			assignOrder(e, *remoteElevators, btn_input)
 
+		// sent in help functions in FSM when an order is completed
 		case completed_order := <- completedOrderCH:
 			temp := (*e).AssignedOrders[(*e).Id]
 			temp[completed_order.Floor][completed_order.Button] = elevator.Confirmed
