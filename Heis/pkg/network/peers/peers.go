@@ -20,6 +20,8 @@ type PeerUpdate struct {
 const interval = 15 * time.Millisecond
 const timeout = 500 * time.Millisecond
 
+
+// Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
 func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState *elevator.Elevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
@@ -50,6 +52,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState 
 	}
 }
 
+// Keeps track of the conected elevators, and sends the elevatorstates on the elevatorStateCh to the order module, the ids are sent to main on the peerUpdate channel.
 func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
@@ -71,7 +74,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 
 		id := msg.Id // Extract peer ID
 
-		// Forward the full elevator state to Fsm
+		// Forward the full elevator state to order module
 		elevatorStateCh <- msg
 
 		// Track peer presence

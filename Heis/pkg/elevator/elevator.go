@@ -2,7 +2,6 @@ package elevator
 
 import (
 	"Heis/pkg/elevio"
-	"strconv"
 )
 
 
@@ -40,32 +39,11 @@ type Elevator struct {
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
 	Id 		   string
-	Index 	   int
 
-	Config struct { //type?
+	Config struct {
 		ClearRequestVariant ClearRequestVariant
 		DoorOpenDuration_s  float64
 	}
-}
-
-// type DistributorElevator struct {
-// 	ID       string
-// 	Floor    int
-// 	Dir      Direction
-// 	Requests [][]RequestState
-// 	Behave   Behaviour
-// }
-
-type Request struct {
-	Floor  int
-	Button elevio.ButtonType
-}
-
-type CostRequest struct {
-	Id         string
-	Cost       int
-	AssignedId string
-	Req        Request
 }
 
 type DirnBehaviourPair struct {
@@ -73,7 +51,7 @@ type DirnBehaviourPair struct {
 	Dirn      elevio.MotorDirection
 }
 
-
+// Initializes an elevator struct. All orders are by default set to 0/false
 func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string) {
 	// initialize the (*e) struct
 	(*e).Floor = -1
@@ -82,13 +60,6 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 	(*e).Config.ClearRequestVariant = CV_InDirn
 	(*e).Config.DoorOpenDuration_s = 3.0
 	(*e).Id = id
-	//Assuming an Id/index from 1 - 9
-	i, err := strconv.Atoi(id[len(id) - 1:])
-	if err != nil {
-		(*e).Index = 0
-	} else {
-		(*e).Index = i
-	}
 	
 	AssignedOrders := make([][]RequestState, N_floors)
 	for i := range AssignedOrders {
@@ -101,15 +72,4 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 		(*e).LocalOrders[i] = make([]bool, N_buttons)
 	}
 }
-
-// func transmitState(e *Elevator, Tx chan msgTypes.UdpMsg, id string) Elevator {
-// 	elevatorStateMsg := msgTypes.ElevatorStateMsg{
-// 			Elevator: e,
-// 			Id:       id,
-// 		}
-// 	for {
-// 		Tx <- msgTypes.UdpMsg{ButtonPressMsg: &buttonPressMsg}
-// 		time.Sleep(10 * time.Millisecond)
-// 	}
-// }
 

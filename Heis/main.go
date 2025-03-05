@@ -102,10 +102,11 @@ func main() {
 
 	localAssignedOrder := make(chan elevio.ButtonEvent)
 	localRequest := make(chan elevio.ButtonEvent)
-	stateUpdated := make(chan bool)
 
-	go fsm.Fsm(&e, &remoteElevators, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, Tx, Rx, peerTxEnable, elevatorStateCh, id, localAssignedOrder, localRequest, stateUpdated)
-	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, stateUpdated)
+	completedOrderCh := make(chan elevio.ButtonEvent)
+
+	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrder, localRequest, completedOrderCh)
+	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, elevatorStateCh, completedOrderCh)
 
 
 	fmt.Println("Started")

@@ -34,7 +34,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 		}
 		for {
 			if fsm.ShouldStop(e) {
-				e = fsm.ClearAtCurrentFloor(e, nil)
+				e = clearAtCurrentFloor(e)
 				duration += int(e.Config.DoorOpenDuration_s)
 				// might not need this?
 				pair := fsm.ChooseDirection(e)
@@ -51,4 +51,41 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 
 	}
 	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
+}
+
+
+
+//version without sending on completed channel to orders
+func clearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
+	switch e.Config.ClearRequestVariant {
+	case elevator.CV_ALL:
+		for btn := 0; btn < N_buttons; btn++ {
+			e.LocalOrders[e.Floor][btn] = false
+		}
+	case elevator.CV_InDirn:
+		e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+		switch e.Dirn {
+		case elevio.MD_Up:
+			if (!fsm.Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] == false) {
+				e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+			}
+			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+		case elevio.MD_Down:
+			if (!fsm.Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] == false) {
+				e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+			}
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+		// case elevio.MD_Stop:
+		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+		// 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+		// 	e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+		default:
+			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+			//e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+		}
+	default:
+
+	}
+	return e
 }

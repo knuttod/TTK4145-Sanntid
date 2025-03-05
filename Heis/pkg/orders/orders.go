@@ -42,6 +42,8 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 				if assignedOrdersCheck(*remoteElevators, *e){
 					orderMerger(e, *remoteElevators)
 				}
+				fmt.Println("Local: ", (*e).AssignedOrders)
+				fmt.Println("Remote: ", remoteElevatorState.Elevator.AssignedOrders)
 			}
 		// case for disconnection or timout for elevator to reassign orders
 		// case for synchronization after restart/connection to nettwork
@@ -53,12 +55,14 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 				if (*e).AssignedOrders[(*e).Id][floor][btn] != elevator.Confirmed {
 					activeLocalOrders[floor][btn] = false
 				}
-				if shouldStartLocalOrder(e, *remoteElevators, (*e).Id, floor, btn) && !activeLocalOrders[floor][btn] {
-					localAssignedOrder <- elevio.ButtonEvent{
-						Floor:  floor,
-						Button: elevio.ButtonType(btn),
+				if assignedOrdersCheck(*remoteElevators, *e){
+					if shouldStartLocalOrder(e, *remoteElevators, (*e).Id, floor, btn) && !activeLocalOrders[floor][btn] {
+						localAssignedOrder <- elevio.ButtonEvent{
+							Floor:  floor,
+							Button: elevio.ButtonType(btn),
+						}
+						activeLocalOrders[floor][btn] = true
 					}
-					activeLocalOrders[floor][btn] = true
 				}
 			}
 		}
@@ -151,8 +155,8 @@ func assignedOrdersCheck(remoteElevators map[string]elevator.Elevator, elevator 
 		}
 		sort.Strings(localKeys)
 		sort.Strings(remoteKeys)
-		fmt.Println("local keys", localKeys)
-		fmt.Println("External keys", remoteKeys)
+		// fmt.Println("local keys", localKeys)
+		// fmt.Println("External keys", remoteKeys)
 
 		if !reflect.DeepEqual(localKeys, remoteKeys) {
 			return false

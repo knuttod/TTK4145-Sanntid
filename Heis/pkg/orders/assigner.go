@@ -69,25 +69,7 @@ import (
 // 	}
 // }
 
-// func AssignOrder(elevators []*elevator.Elevator, order elevio.ButtonEvent) *elevator.Elevator{
-// 	if len(elevators) < 2 || order.Button == elevio.BT_Cab {
-// 		elevators[elevator.LocalElevator].(*e).AssignedOrders[order.Floor][order.Button] = elevator.Order
-// 		return
-// 	}
-// 	minCost := 99999
-// 	elevCost := 0
-// 	var minElev *elevator.Elevator
-// 	for _, elev := range elevators {
-// 		elevCost = cost.Cost(elev, order)
-// 		if elevCost < minCost {
-// 			minCost = elevCost
-// 			minElev = elev
-// 		}
-// 	}
-// 	(*minElev).(*e).AssignedOrders[order.Floor][order.Button] = elevator.Order
-// 	//(*minElev).Requests[order.Floor][order.Button] = elevator.Order
-// 	return minElev
-// }
+
 
 func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elevator, order elevio.ButtonEvent) {
 	
@@ -97,9 +79,7 @@ func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elev
 			temp := (*e).AssignedOrders[(*e).Id]
 			temp[order.Floor][order.Button] = elevator.Order
 			(*e).AssignedOrders[(*e).Id] = temp
-			// ((*e).AssignedOrders[(*e).Id])[order.Floor][order.Button] = elevator.Order
 		}
-		// elevators[elevator.LocalElevator].(*e).AssignedOrders[order.Floor][order.Button] = elevator.Order
 		return
 	}
 	minCost := 99999

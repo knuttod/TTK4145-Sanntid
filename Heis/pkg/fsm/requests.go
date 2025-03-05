@@ -6,11 +6,6 @@ import (
 	//"fmt"
 )
 
-// type DirnBehaviourPair struct {
-// 	Behaviour ElevatorBehaviour
-// 	Dirn      elevio.MotorDirection
-// }
-
 func Above(e elevator.Elevator) bool {
 	for f := e.Floor + 1; f < N_floors; f++ {
 		for btn := 0; btn < N_buttons; btn++ {
@@ -44,7 +39,6 @@ func Here(e elevator.Elevator) bool {
 }
 
 func ChooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
-
 	switch e.Dirn {
 	case elevio.MD_Up:
 		if Above(e) {
@@ -128,13 +122,13 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevio.
 	}
 }
 
-// Få inn funksjonaliltet for å sende eller opdatere globale orders når denne blir kjørt
+
+// Clears at current floor and sends that the order is complete to the order module.
 func ClearAtCurrentFloor(e elevator.Elevator, completedOrder chan elevio.ButtonEvent) elevator.Elevator {
 	switch e.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
 			e.LocalOrders[e.Floor][btn] = false
-			// send to orders
 			completedOrder <- elevio.ButtonEvent {
 				Floor: e.Floor,
 				Button: elevio.ButtonType(btn),
