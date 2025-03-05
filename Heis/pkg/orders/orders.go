@@ -33,7 +33,7 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 
 		case completed_order := <- completedOrderCH:
 			temp := (*e).AssignedOrders[(*e).Id]
-			temp[completed_order.Floor][completed_order.Button] = elevator.Confirmed
+			temp[completed_order.Floor][completed_order.Button] = elevator.Complete
 			(*e).AssignedOrders[(*e).Id] = temp
 		
 		case remoteElevatorState := <-elevatorStateCh:
@@ -42,8 +42,9 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 				if assignedOrdersCheck(*remoteElevators, *e){
 					orderMerger(e, *remoteElevators)
 				}
-				fmt.Println("Local: ", (*e).AssignedOrders)
-				fmt.Println("Remote: ", remoteElevatorState.Elevator.AssignedOrders)
+				// fmt.Println("Local: ", (*e).AssignedOrders)
+				// fmt.Println("Remote: ", remoteElevatorState.Elevator.AssignedOrders)
+				// fmt.Println("own: ", (*e).LocalOrders)
 			}
 		// case for disconnection or timout for elevator to reassign orders
 		// case for synchronization after restart/connection to nettwork
@@ -57,6 +58,7 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 				}
 				if assignedOrdersCheck(*remoteElevators, *e){
 					if shouldStartLocalOrder(e, *remoteElevators, (*e).Id, floor, btn) && !activeLocalOrders[floor][btn] {
+						fmt.Println("her")
 						localAssignedOrder <- elevio.ButtonEvent{
 							Floor:  floor,
 							Button: elevio.ButtonType(btn),

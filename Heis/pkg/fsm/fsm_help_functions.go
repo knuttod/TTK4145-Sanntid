@@ -3,6 +3,7 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"fmt"
 	//"fmt"
 )
 
@@ -47,7 +48,7 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 		case elevator.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			(*e) = ClearAtCurrentFloor((*e), completedOrderCH)
+			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
 
 		case elevator.EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)
@@ -71,9 +72,10 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 	switch (*e).Behaviour {
 	case elevator.EB_Moving:
 		if ShouldStop((*e)) {
+			fmt.Println("stop")
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
-			(*e) = ClearAtCurrentFloor((*e), completedOrderCH)
+			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			//drv_doorTimer <- 0.0
 			setAllLights(e)
@@ -99,7 +101,7 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrde
 		case elevator.EB_DoorOpen:
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s //????
 			//drv_doorTimer <- 0.0
-			(*e) = ClearAtCurrentFloor((*e), completedOrderCH)
+			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
 			setAllLights(e)
 
 		//lagt inn selv

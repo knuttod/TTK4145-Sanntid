@@ -13,39 +13,40 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 	if elevator.ElevatorBehaviour(e.Behaviour) != elevator.EB_Unavailable {
 
 		duration := 0
+		elev := e
 
-		switch e.Behaviour {
+		switch elev.Behaviour {
 		case elevator.EB_Idle:
-			pair := fsm.ChooseDirection(e)
-			e.Dirn = pair.Dirn
-			e.Behaviour = pair.Behaviour
-			if e.Dirn == elevio.MD_Stop {
+			pair := fsm.ChooseDirection(elev)
+			elev.Dirn = pair.Dirn
+			elev.Behaviour = pair.Behaviour
+			if elev.Dirn == elevio.MD_Stop {
 				return duration //Dersom EB_IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
 
 			}
 		case elevator.EB_Moving:
 			duration += TRAVEL_TIME / 2 //dersom heisen er i beveglse legger vi til en kostand
-			e.Floor += int(e.Dirn)
+			elev.Floor += int(elev.Dirn)
 		case elevator.EB_DoorOpen:
-			duration -= int(e.Config.DoorOpenDuration_s) / 2
+			duration -= int(elev.Config.DoorOpenDuration_s) / 2
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
 			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
 
 		}
 		for {
-			if fsm.ShouldStop(e) {
-				e = clearAtCurrentFloor(e)
-				duration += int(e.Config.DoorOpenDuration_s)
+			if fsm.ShouldStop(elev) {
+				elev = clearAtCurrentFloor(elev)
+				duration += int(elev.Config.DoorOpenDuration_s)
 				// might not need this?
-				pair := fsm.ChooseDirection(e)
-				e.Dirn = pair.Dirn
-				e.Behaviour = pair.Behaviour
+				pair := fsm.ChooseDirection(elev)
+				elev.Dirn = pair.Dirn
+				elev.Behaviour = pair.Behaviour
 				// ...
-				if e.Dirn == elevio.MD_Stop {
+				if elev.Dirn == elevio.MD_Stop {
 					return duration //returner duration når den simulerte heisen har kommet til en stopp
 				}
 			}
-			e.Floor += int(e.Dirn)  //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
+			elev.Floor += int(elev.Dirn)  //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
 			duration += TRAVEL_TIME //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
 
@@ -56,36 +57,36 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 
 
 //version without sending on completed channel to orders
-func clearAtCurrentFloor(e elevator.Elevator) elevator.Elevator {
-	switch e.Config.ClearRequestVariant {
+func clearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
+	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
-			e.LocalOrders[e.Floor][btn] = false
+			elev.LocalOrders[elev.Floor][btn] = false
 		}
 	case elevator.CV_InDirn:
-		e.LocalOrders[e.Floor][elevio.BT_Cab] = false
-		switch e.Dirn {
+		elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
+		switch elev.Dirn {
 		case elevio.MD_Up:
-			if (!fsm.Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] == false) {
-				e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+			if (!fsm.Above(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallUp] == false) {
+				elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
 			}
-			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+			elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 		case elevio.MD_Down:
-			if (!fsm.Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] == false) {
-				e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+			if (!fsm.Below(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallDown] == false) {
+				elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 			}
-			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+			elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
 		// case elevio.MD_Stop:
-		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
-		// 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
-		// 	e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+		// 	elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
+		// 	elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
+		// 	elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
 		default:
-			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
-			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
-			//e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+			elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
+			elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
+			//elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
 		}
 	default:
 
 	}
-	return e
+	return elev
 }

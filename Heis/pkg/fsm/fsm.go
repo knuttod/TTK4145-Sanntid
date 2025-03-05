@@ -3,7 +3,7 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
+	// "fmt"
 )
 
 // define in config
@@ -34,7 +34,7 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 		case current_floor := <-drv_floors:
 			floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
 
-			fmt.Printf("drv_floors: %v", current_floor)
+			// fmt.Printf("drv_floors: %v", current_floor)
 		case obstruction := <-drv_obstr:
 			if obstruction {
 				(*elev).Obstructed = true
@@ -46,7 +46,7 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 		case <-doorTimerFinishedCH:
 			if !elev.Obstructed {
 				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
-				fmt.Println("drv_doortimer timed out")
+				// fmt.Println("drv_doortimer timed out")
 				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
 			}
 
