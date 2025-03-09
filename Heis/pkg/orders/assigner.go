@@ -71,11 +71,11 @@ import (
 
 
 
-func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elevator, order elevio.ButtonEvent) {
+func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elevator, activeElevators []string, order elevio.ButtonEvent) {
 	
 	
 	if len((*e).AssignedOrders) < 2 || order.Button == elevio.BT_Cab {
-		if (*e).AssignedOrders[(*e).Id][order.Floor][order.Button] == elevator.None && ordersSynced(e, remoteElevators, (*e).Id, order.Floor, int(order.Button)){
+		if (*e).AssignedOrders[(*e).Id][order.Floor][order.Button] == elevator.None && ordersSynced(*e, remoteElevators, activeElevators, (*e).Id, order.Floor, int(order.Button)){
 			temp := (*e).AssignedOrders[(*e).Id]
 			temp[order.Floor][order.Button] = elevator.Order
 			(*e).AssignedOrders[(*e).Id] = temp
@@ -84,20 +84,28 @@ func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elev
 	}
 	minCost := 99999
 	elev := *e
-	// fmt.Println("local b: ", (*e).LocalOrders)
 	elevCost := cost(elev, order)  //denne må endres på, oppdaterer local orders mappet, noe den ikke skal
-	// fmt.Println("local a: ", (*e).LocalOrders)
 	minCost = elevCost
 	// elevCost := 0
 	minElev := (*e).Id
-	for id, elev := range remoteElevators {
-		elevCost = cost(elev, order)
+	// for id, elev := range remoteElevators {
+	// 	elevCost = cost(elev, order)
+	// 	if elevCost < minCost {
+	// 		minCost = elevCost
+	// 		minElev = id
+	// 	}
+	// }
+	for _, elev := range activeElevators{
+		if elev == (*e).Id {
+			continue
+		}
+		elevCost = cost(remoteElevators[elev], order)
 		if elevCost < minCost {
 			minCost = elevCost
-			minElev = id
+			minElev = elev
 		}
 	}
-	if (*e).AssignedOrders[minElev][order.Floor][order.Button] == elevator.None && ordersSynced(e, remoteElevators, minElev, order.Floor, int(order.Button)){
+	if (*e).AssignedOrders[minElev][order.Floor][order.Button] == elevator.None && ordersSynced(*e, remoteElevators, activeElevators, minElev, order.Floor, int(order.Button)){
 		temp := (*e).AssignedOrders[minElev]
 		temp[order.Floor][order.Button] = elevator.Order
 		(*e).AssignedOrders[minElev] = temp

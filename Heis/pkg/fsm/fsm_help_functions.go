@@ -116,7 +116,6 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrde
 	}
 }
 
-// denne funker ikke nå
 
 // Updates the elevator's button lights to reflect the current request states.
 // Turns on lights for active LocalOrders and turns them off otherwise.

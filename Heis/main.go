@@ -74,7 +74,7 @@ func main() {
 	peerTxEnable := make(chan bool)
 
 	localAssignedOrder := make(chan elevio.ButtonEvent)
-	localRequest := make(chan elevio.ButtonEvent)
+	localRequest := make(chan elevio.ButtonEvent, 5)
 	completedOrderCh := make(chan elevio.ButtonEvent)
 
 
@@ -90,18 +90,18 @@ func main() {
 	
 	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrder, localRequest, completedOrderCh)
 	
-	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, elevatorStateCh, completedOrderCh)
+	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, elevatorStateCh, completedOrderCh, peerUpdateCh)
 
 
 	fmt.Println("Started")
-	for {
-		select {
-		case p := <-peerUpdateCh:
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-		}
-	}
-
+	// for {
+	// 	select {
+	// 	case p := <-peerUpdateCh:
+	// 		fmt.Printf("Peer update:\n")
+	// 		fmt.Printf("  Peers:    %q\n", p.Peers)
+	// 		fmt.Printf("  New:      %q\n", p.New)
+	// 		fmt.Printf("  Lost:     %q\n", p.Lost)
+	// 	}
+	// }
+	select{}
 }

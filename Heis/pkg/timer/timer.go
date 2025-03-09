@@ -23,14 +23,14 @@ func Timer(TimerStart chan float64, TimerEnd chan bool) {
 	}
 }
 
-func TimerFinished(Timer chan float64) {
-	var finished bool = false
-	for finished == false {
-		select {
-		case t := <-Timer:
-			if t == 0.0 {
-				finished = true
-			}
-		}
-	}
-}
+// func TimerFinished(Timer chan float64) {
+// 	var finished bool = false
+// 	for finished == false {
+// 		select {
+// 		case t := <-Timer:
+// 			if t == 0.0 {
+// 				finished = true
+// 			}
+// 		}
+// 	}
+// }
