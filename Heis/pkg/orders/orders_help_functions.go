@@ -8,45 +8,57 @@ import (
 	"sort"
 )
 
+func AssignedOrdersInit(id string) map[string][][]elevator.RequestState {
+	assignedOrders := map[string][][]elevator.RequestState{}
+	
+	Orders := make([][]elevator.RequestState, N_floors)
+	for i := range Orders {
+		Orders[i] = make([]elevator.RequestState, N_buttons)
+	}
+	assignedOrders[id] = Orders
+
+	return assignedOrders
+}
+
 // Updates state in assignedOrders for local elevator if it is behind remoteElevators
-func orderMerger(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, activeElevators []string) {
+func orderMerger(AssignedOrders *map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) {
 	var currentState elevator.RequestState
 	var updateState elevator.RequestState
 
-	for id, _ := range (*e).AssignedOrders {	
+	for id, _ := range (*AssignedOrders) {	
 		for floor := range N_floors{
 			for btn := range N_buttons {
-				// for _, elev := range remoteElevators {
-				// 	currentState = (*e).AssignedOrders[id][floor][btn]
+				// for _, elev := range Elevators {
+				// 	currentState = (*AssignedOrders)[id][floor][btn]
 				// 	updateState = elev.AssignedOrders[id][floor][btn]
 
 				// 	if updateState - currentState == 1 || (updateState == elevator.None && currentState == elevator.Complete) {
-				// 		temp := (*e).AssignedOrders[id]
+				// 		temp := (*AssignedOrders)[id]
 				// 		temp[floor][btn] = updateState
-				// 		(*e).AssignedOrders[id] = temp
+				// 		(*AssignedOrders)[id] = temp
 				// 	}
 				// }
 				for _, elev := range activeElevators {
-					if elev == (*e).Id {
+					if elev == selfId {
 						continue
 					}
-					currentState = (*e).AssignedOrders[id][floor][btn]
-					updateState = remoteElevators[elev].AssignedOrders[id][floor][btn]
+					currentState = (*AssignedOrders)[id][floor][btn]
+					updateState = Elevators[elev].AssignedOrders[id][floor][btn]
 
 					if updateState - currentState == 1 || (updateState == elevator.None && currentState == elevator.Complete) {
-						temp := (*e).AssignedOrders[id]
+						temp := (*AssignedOrders)[id]
 						temp[floor][btn] = updateState
-						(*e).AssignedOrders[id] = temp
+						(*AssignedOrders)[id] = temp
 					}
 				}	
-				confirmOrCloseOrders(e, remoteElevators, activeElevators, id, floor, btn)
+				confirmOrCloseOrders(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
 			}
 		}
 	}
 }
 
 // Check if all nodes on nettwork are synced on certain order
-func ordersSynced(e elevator.Elevator, remoteElevators map[string]elevator.Elevator, activeElevators []string, id string, floor, btn int) bool {
+func ordersSynced(AssignedOrders map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int) bool {
 	// for _, elev := range remoteElevators {
 	// 	if (*e).AssignedOrders[id][floor][btn] != elev.AssignedOrders[id][floor][btn] {
 	// 		return false
@@ -54,10 +66,10 @@ func ordersSynced(e elevator.Elevator, remoteElevators map[string]elevator.Eleva
 	// }
 	// return true
 	for _, elev := range activeElevators {
-		if elev == (e).Id {
+		if elev == selfId {
 			continue
 		}
-		if (e).AssignedOrders[id][floor][btn] != remoteElevators[elev].AssignedOrders[id][floor][btn] {
+		if AssignedOrders[id][floor][btn] != Elevators[elev].AssignedOrders[id][floor][btn] {
 			return false
 		}
 	}
@@ -66,49 +78,49 @@ func ordersSynced(e elevator.Elevator, remoteElevators map[string]elevator.Eleva
 
 
 // Increments cyclic counter if all nodes on nettwork are synced on order and state is order or completed
-func confirmOrCloseOrders(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, activeElevators []string, id string, floor, btn int) {
-	if ordersSynced(*e, remoteElevators, activeElevators, id, floor, btn) {
-		if  (*e).AssignedOrders[id][floor][btn] == elevator.Order {
-			temp := (*e).AssignedOrders[id]
+func confirmOrCloseOrders(AssignedOrders *map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int) {
+	if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) {
+		if  (*AssignedOrders)[id][floor][btn] == elevator.Order {
+			temp := (*AssignedOrders)[id]
 			temp[floor][btn] = elevator.Confirmed
-			(*e).AssignedOrders[id] = temp
+			(*AssignedOrders)[id] = temp
 		}
-		if  (*e).AssignedOrders[id][floor][btn] == elevator.Complete{
-			temp := (*e).AssignedOrders[id]
+		if  (*AssignedOrders)[id][floor][btn] == elevator.Complete{
+			temp := (*AssignedOrders)[id]
 			temp[floor][btn] = elevator.None
-			(*e).AssignedOrders[id] = temp
+			(*AssignedOrders)[id] = temp
 		}
 	}
 }
 
 // Should start order when elevators are synced and order is confirmed
-func shouldStartLocalOrder(e *elevator.Elevator, remoteElevators map[string]elevator.Elevator, activeElevators []string, id string, floor, btn int) bool {
-	return ordersSynced(*e, remoteElevators, activeElevators, id, floor, btn) && (*e).AssignedOrders[id][floor][btn] == elevator.Confirmed
+func shouldStartLocalOrder(AssignedOrders map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, floor, btn int) bool {
+	return ordersSynced(AssignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn) && AssignedOrders[selfId][floor][btn] == elevator.Confirmed
 }
 
 // Updates remoteElevator map and adds entries for remote Elevator in assignedOrders map for local elevator if they do not exist yet. 
-func updateFromRemoteElevator(remoteElevators * map[string]elevator.Elevator, e * elevator.Elevator, remoteElevatorState msgTypes.ElevatorStateMsg) {
-	remoteElevator := remoteElevatorState.Elevator
-	(*remoteElevators)[remoteElevatorState.Id] = remoteElevator
+func updateFromRemoteElevator(AssignedOrders * map[string][][]elevator.RequestState, Elevators * map[string]elevator.NetworkElevator, remoteElevatorState msgTypes.ElevatorStateMsg) {
+	remoteElevator := remoteElevatorState.NetworkElevator
+	(*Elevators)[remoteElevatorState.Id] = remoteElevator
 	
-	for id, _ := range *remoteElevators {
-		_, exists := (*e).AssignedOrders[id]
+	for id, _ := range *Elevators {
+		_, exists := (*AssignedOrders)[id]
 		if !exists {
-			(*e).AssignedOrders[id] = remoteElevator.AssignedOrders[remoteElevatorState.Id]
+			(*AssignedOrders)[id] = remoteElevator.AssignedOrders[remoteElevatorState.Id]
 		}
 	}
 }
 
 // Checks if all active elevators in remoteElevators have an assignedOrders map with keys for all active elevators on nettwork 
-func assignedOrdersKeysCheck(remoteElevators map[string]elevator.Elevator, e elevator.Elevator, activeElevators []string) bool {
+func assignedOrdersKeysCheck(AssignedOrders map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, selfId string, activeElevators []string) bool {
 	
 	var localKeys []string
 	var remoteKeys []string
 	
-	for k, _ := range e.AssignedOrders{
+	for k, _ := range AssignedOrders{
 		localKeys = append(localKeys, k)
 	}
-	
+
 	// for _, elev := range remoteElevators {
 	// 	remoteKeys = []string{}
 	// 	for k, _ := range elev.AssignedOrders{
@@ -124,11 +136,11 @@ func assignedOrdersKeysCheck(remoteElevators map[string]elevator.Elevator, e ele
 	// 	}
 	// }
 	for _, elev := range activeElevators {
-		if elev == e.Id {
+		if elev == selfId {
 			continue
 		}
 		remoteKeys = []string{}
-		for k, _ := range remoteElevators[elev].AssignedOrders{
+		for k, _ := range Elevators[elev].AssignedOrders{
 			remoteKeys = append(remoteKeys, k)
 		}
 		sort.Strings(localKeys)
@@ -143,42 +155,42 @@ func assignedOrdersKeysCheck(remoteElevators map[string]elevator.Elevator, e ele
 	return true
 }
 
-func restartOrdersSynchroniser(e * elevator.Elevator, remoteElevatorState msgTypes.ElevatorStateMsg) {
+func restartOrdersSynchroniser(AssignedOrders * map[string][][]elevator.RequestState, remoteElevatorState msgTypes.ElevatorStateMsg) {
 
 	var update bool = false
-	for id, _ := range (*e).AssignedOrders {
+	for id, _ := range *AssignedOrders {
 		for floor := range N_floors {
 			for btn := range N_buttons {
-				if remoteElevatorState.Elevator.AssignedOrders[id][floor][btn] != elevator.None {
+				if remoteElevatorState.NetworkElevator.AssignedOrders[id][floor][btn] != elevator.None {
 					update = true
 					break;
 				}
 			}
 		}
 		if update {
-			(*e).AssignedOrders[id] = remoteElevatorState.Elevator.AssignedOrders[id]
+			(*AssignedOrders)[id] = remoteElevatorState.NetworkElevator.AssignedOrders[id]
 		}
 	}
 }
 
-func reconnectOrdersSynchroniser(e * elevator.Elevator, remoteElevatorState msgTypes.ElevatorStateMsg, activeElevators []string) {
+func reconnectOrdersSynchroniser(AssignedOrders * map[string][][]elevator.RequestState, remoteElevatorState msgTypes.ElevatorStateMsg, activeElevators []string) {
 	var stateLocal elevator.RequestState
 	var stateRemote elevator.RequestState
 
-	for id, _ := range (*e).AssignedOrders {
+	for id, _ := range *AssignedOrders {
 		for floor := range N_floors {
 			for btn := range N_buttons {
-				stateLocal = (*e).AssignedOrders[id][floor][btn]
-				stateRemote = remoteElevatorState.Elevator.AssignedOrders[id][floor][btn]
+				stateLocal = (*AssignedOrders)[id][floor][btn]
+				stateRemote = remoteElevatorState.NetworkElevator.AssignedOrders[id][floor][btn]
 
 				if stateLocal < stateRemote {
-					temp := (*e).AssignedOrders[id]
+					temp := (*AssignedOrders)[id]
 					temp[floor][btn] = stateRemote
-					(*e).AssignedOrders[id] = temp
+					(*AssignedOrders)[id] = temp
 				} else {
-					temp := remoteElevatorState.Elevator.AssignedOrders[id]
+					temp := remoteElevatorState.NetworkElevator.AssignedOrders[id]
 					temp[floor][btn] = stateLocal
-					remoteElevatorState.Elevator.AssignedOrders[id] = temp
+					remoteElevatorState.NetworkElevator.AssignedOrders[id] = temp
 				}
 			}
 		}
@@ -186,7 +198,7 @@ func reconnectOrdersSynchroniser(e * elevator.Elevator, remoteElevatorState msgT
 
 }
 
-func setAllHallLightsfromRemote(remoteElevators map[string]elevator.Elevator, activeElevators []string, selfId string) {
+func setAllHallLightsfromRemote(Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) {
 	
 	var setLight bool
 	for floor := 0; floor < N_floors; floor++ {
@@ -196,7 +208,7 @@ func setAllHallLightsfromRemote(remoteElevators map[string]elevator.Elevator, ac
 				if elev == selfId {
 					continue
 				}
-				if remoteElevators[elev].AssignedOrders[elev][floor][btn] == elevator.Confirmed{
+				if Elevators[elev].AssignedOrders[elev][floor][btn] == elevator.Confirmed{
 					setLight = true	
 				}
 			}

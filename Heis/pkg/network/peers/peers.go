@@ -21,8 +21,9 @@ const interval = 15 * time.Millisecond
 const timeout = 500 * time.Millisecond
 
 
+
 // Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
-func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState *elevator.Elevator) {
+func Transmitter(port int, id string, transmitEnable <-chan bool, elev *elevator.Elevator, AssignedOrders *map[string][][]elevator.RequestState) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
@@ -36,7 +37,10 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, elevatorState 
 		if enable {
 			// Create elevator state message
 			elevatorStateMsg := msgTypes.ElevatorStateMsg{
-				Elevator: *elevatorState, // Pass by reference
+				NetworkElevator: elevator.NetworkElevator{
+					Elevator: *elev, // Pass by reference
+					AssignedOrders: *AssignedOrders,
+				},
 				Id:       id,
 			}
 

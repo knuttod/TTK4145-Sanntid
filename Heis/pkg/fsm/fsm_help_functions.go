@@ -3,6 +3,7 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"Heis/pkg/msgTypes"
 	//"fmt"
 )
 
@@ -19,16 +20,19 @@ func initBetweenFloors(e *elevator.Elevator) {
 // (moving or opening doors). If the elevator is moving or has doors open, it updates
 // the request state accordingly. The function also manages the door timer, sends updated
 // elevator states over UDP, and updates the button lights.
-func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, completedOrderCH chan elevio.ButtonEvent) {
+func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, completedOrderCH chan msgTypes.FsmMsg) {
 
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			// send clear to assigned orders
-			completedOrderCH <- elevio.ButtonEvent {
-				Floor: btn_floor,
-				Button: btn_type,
+			completedOrderCH <- msgTypes.FsmMsg{
+				Elevator: *e,
+				Event: elevio.ButtonEvent {
+					Floor: btn_floor,
+					Button: elevio.ButtonType(btn_floor),
+				},
 			}
 		} else {
 			(*e).LocalOrders[btn_floor][btn_type] = true
@@ -63,7 +67,7 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 
 // When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
 // to stop. if it is supposed to stop it stops, clears the floor then opens the door.
-func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64, completedOrderCH chan elevio.ButtonEvent) {
+func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64, completedOrderCH chan msgTypes.FsmMsg) {
 
 	(*e).Floor = newFloor
 	elevio.SetFloorIndicator((*e).Floor)
@@ -87,7 +91,7 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 // runned twice, once at the begining of the timer initialisation and
 // once when the door is supposed to close to check if the obstruction
 // is active.
-func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrderCH chan elevio.ButtonEvent) {
+func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrderCH chan msgTypes.FsmMsg) {
 
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:

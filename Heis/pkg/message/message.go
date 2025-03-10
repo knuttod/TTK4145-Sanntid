@@ -1,24 +1,24 @@
 package message
 
 import (
-	"Heis/pkg/elevator"
-	"Heis/pkg/msgTypes"
-	// "Heis/pkg/elevio"
-	"time"
+	// "Heis/pkg/elevator"
+	// "Heis/pkg/msgTypes"
+	// // "Heis/pkg/elevio"
+	// "time"
 )
 
 
-func TransmitState(e *elevator.Elevator, Tx chan msgTypes.UdpMsg, id string) {
-	for {
-		elevatorStateMsg := msgTypes.ElevatorStateMsg{
-			Elevator: *e,
-			Id:       id,
-		}
-		//Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
-		Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
-		time.Sleep(10 * time.Millisecond)
-	}
-}
+// func TransmitState(e *elevator.Elevator, Tx chan msgTypes.UdpMsg, id string) {
+// 	for {
+// 		elevatorStateMsg := msgTypes.ElevatorStateMsg{
+// 			Elevator: *e,
+// 			Id:       id,
+// 		}
+// 		//Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
+// 		Tx <- msgTypes.UdpMsg{ElevatorStateMsg: &elevatorStateMsg}
+// 		time.Sleep(10 * time.Millisecond)
+// 	}
+// }
 
 // func TransmitButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, Tx chan msgTypes.ButtonPressMsg, id string) {
 // 	buttonPressMsg := msgTypes.ButtonPressMsg{

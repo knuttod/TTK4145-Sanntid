@@ -56,8 +56,8 @@ func main() {
 	elevator.Elevator_init(&e, NumFloors, NumButtons, NumElevators, id)
 	elevio.Init("localhost:"+port, NumFloors)
 
-	remoteElevators := make(map[string]elevator.Elevator)
-	
+	var assignedOrders map[string][][]elevator.RequestState
+	assignedOrders = orders.AssignedOrdersInit(id)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -71,12 +71,12 @@ func main() {
 	newNodeRx := make(chan msgTypes.ElevatorStateMsg)
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
-	elevatorStateCh := make(chan msgTypes.ElevatorStateMsg)
+	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 
-	localAssignedOrder := make(chan elevio.ButtonEvent, 5)
-	localRequest := make(chan elevio.ButtonEvent, 5)
-	completedOrderCh := make(chan elevio.ButtonEvent)
+	localAssignedOrderCH := make(chan elevio.ButtonEvent, 5)
+	buttonPressCH := make(chan msgTypes.FsmMsg, 5)
+	completedOrderCh := make(chan msgTypes.FsmMsg)
 
 
 	go elevio.PollButtons(drv_buttons)
@@ -89,12 +89,13 @@ func main() {
 	go bcast.Transmitter(15648, newNodeTx)
 	go bcast.Receiver(15648, newNodeRx)
 
-	go peers.Transmitter(15647, id, peerTxEnable, &e)
-	go peers.Receiver(15647, peerUpdateCh, elevatorStateCh)
+	go peers.Transmitter(15647, id, peerTxEnable, &e, &assignedOrders)
+	go peers.Receiver(15647, peerUpdateCh, remoteElevatorCh)
 	
-	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrder, localRequest, completedOrderCh)
+	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrderCH, buttonPressCH, completedOrderCh)
 	
-	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, completedOrderCh, elevatorStateCh, peerUpdateCh, newNodeTx, newNodeRx)
+	// go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx)
+	go orders.OrderHandler(e, &assignedOrders, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx)
 
 
 	fmt.Println("Started")
