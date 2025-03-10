@@ -19,7 +19,13 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 
 	if elevio.GetFloor() == -1 {
 		initBetweenFloors(elev)
+		for (*elev).Floor == -1 {
+			current_floor := <-drv_floors
+			floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
+		} 
 	}
+
+	
 
 	for {
 		select {
