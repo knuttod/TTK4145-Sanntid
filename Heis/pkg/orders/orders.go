@@ -69,7 +69,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 			assignOrder(assignedOrders, Elevators, activeElevators, selfId, btn_input) //denne endrer på localOrders mapet. Ikke riktig
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
 
-			resetTimer <- timeOutTime
+
+			//resetTimer <- timeOutTime
 
 		case elevatorUpdate := <- completedOrderCH:
 			fmt.Println("done")
@@ -91,8 +92,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 					orderMerger(assignedOrders, Elevators, activeElevators, selfId)
 				}
 				// fmt.Println("Local: ", (*assignedOrders))
-				// fmt.Println("Remote: ", remoteElevatorState.Elevator.AssignedOrders)
-				// fmt.Println("own: ", (*e).LocalOrders)
+				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
+				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 				resetTimer <- timeOutTime
 			}
@@ -140,13 +141,22 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 		// Da kan man håndtere dersom man har forskjellige assignedOrders, F.eks dersom en heis har 0 og en har 2 og man vil ha 2 kan man sette 1 i den som er 0, motsatt sette 3 i den som er 2.
 		}
 
+		
+
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				if (*assignedOrders)[selfId][floor][btn] != elevator.Confirmed {
 					activeLocalOrders[floor][btn] = false
 				}
+				// fmt.Println("Active: ", activeElevators)
+				// fmt.Println("Local: ", (*assignedOrders))
+				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
+				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				if assignedOrdersKeysCheck(*assignedOrders, Elevators, selfId, activeElevators){
+					if len(activeElevators) == 1 {
+						confirmOrCloseOrders(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn)
+					}
 					if shouldStartLocalOrder(*assignedOrders, Elevators, activeElevators, selfId, floor, btn) && !activeLocalOrders[floor][btn] {
 						// fmt.Println("her")
 						localAssignedOrder <- elevio.ButtonEvent{

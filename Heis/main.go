@@ -74,8 +74,8 @@ func main() {
 	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 
-	localAssignedOrderCH := make(chan elevio.ButtonEvent, 5)
-	buttonPressCH := make(chan msgTypes.FsmMsg, 5)
+	localAssignedOrderCH := make(chan elevio.ButtonEvent) //might need buffer
+	buttonPressCH := make(chan msgTypes.FsmMsg) //might need buffer
 	completedOrderCh := make(chan msgTypes.FsmMsg)
 
 

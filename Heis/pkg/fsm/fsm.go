@@ -18,12 +18,15 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 	drv_stop chan bool, doorTimerStartCH chan float64, doorTimerFinishedCH chan bool,
 	id string, localAssignedOrderCH chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg) {
 
-	if elevio.GetFloor() == -1 {
+	floor := elevio.GetFloor()
+	if floor == -1 {
 		initBetweenFloors(elev)
 		for (*elev).Floor == -1 {
 			current_floor := <-drv_floors
 			floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
 		} 
+	} else {
+		(*elev).Floor = floor
 	}
 
 	
