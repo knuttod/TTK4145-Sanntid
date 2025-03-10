@@ -26,7 +26,9 @@ const N_buttons = 3
 // Updates local assignedOrders from a remoteElevator sent on elevatorStateCh.
 // Also checks if an order to be done by this elevator should be started or not
 func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Elevator, 
-	localAssignedOrder, localRequest chan elevio.ButtonEvent, elevatorStateCh chan msgTypes.ElevatorStateMsg, completedOrderCH chan elevio.ButtonEvent, peerUpdateCh chan peers.PeerUpdate) {
+	localAssignedOrder, localRequest chan elevio.ButtonEvent, completedOrderCH chan elevio.ButtonEvent, 
+	elevatorStateCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
+	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg) {
 	var activeLocalOrders [N_floors][N_buttons]bool
 	var activeElevators []string
 
@@ -67,11 +69,10 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 			resetTimer <- timeOutTime
 		
 		case remoteElevatorState := <-elevatorStateCh:
-			fmt.Println("Update")
 			if remoteElevatorState.Id != (*e).Id {
-				fmt.Println("External update")
+				// fmt.Println("External update")
 				updateFromRemoteElevator(remoteElevators, e, remoteElevatorState)
-				if assignedOrdersCheck(*remoteElevators, *e, activeElevators){
+				if assignedOrdersKeysCheck(*remoteElevators, *e, activeElevators){
 					orderMerger(e, *remoteElevators, activeElevators)
 				}
 				// fmt.Println("Local: ", (*e).AssignedOrders)
@@ -80,6 +81,16 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 
 				resetTimer <- timeOutTime
 			}
+		case elevatorState := <- newNodeRx:
+			if elevatorState.Id != (*e).Id {
+
+				fmt.Println("New update")
+				// updateFromRemoteElevator(remoteElevators, e, elevatorState)
+				// if assignedOrdersKeysCheck(*remoteElevators, *e, activeElevators){
+				// 	orderMerger(e, *remoteElevators, activeElevators)
+				// }
+			}
+
 		case p := <- peerUpdateCh:
 			activeElevators = p.Peers
 			fmt.Printf("Peer update:\n")
@@ -88,6 +99,11 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 			fmt.Printf("  Lost:     %q\n", p.Lost)
 			// kjøre reassign orders på heisene som ligger i lost. 
 			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
+
+			if len(p.New) > 0 {
+				newNodeTx <- msgTypes.ElevatorStateMsg{Elevator: *e, Id: (*e).Id}
+				fmt.Println("newmsg")
+			}
 
 			resetTimer <- timeOutTime
 
@@ -108,7 +124,7 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 				if (*e).AssignedOrders[(*e).Id][floor][btn] != elevator.Confirmed {
 					activeLocalOrders[floor][btn] = false
 				}
-				if assignedOrdersCheck(*remoteElevators, *e, activeElevators){
+				if assignedOrdersKeysCheck(*remoteElevators, *e, activeElevators){
 					if shouldStartLocalOrder(e, *remoteElevators, activeElevators, (*e).Id, floor, btn) && !activeLocalOrders[floor][btn] {
 						// fmt.Println("her")
 						localAssignedOrder <- elevio.ButtonEvent{
@@ -218,7 +234,7 @@ func updateFromRemoteElevator(remoteElevators * map[string]elevator.Elevator, e 
 }
 
 // Checks if all active elevators in remoteElevators have an assignedOrders map with keys for all active elevators on nettwork 
-func assignedOrdersCheck(remoteElevators map[string]elevator.Elevator, e elevator.Elevator, activeElevators []string) bool {
+func assignedOrdersKeysCheck(remoteElevators map[string]elevator.Elevator, e elevator.Elevator, activeElevators []string) bool {
 	
 	var localKeys []string
 	var remoteKeys []string

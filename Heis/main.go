@@ -6,11 +6,14 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
 	"Heis/pkg/msgTypes"
+
 	// "Heis/pkg/network/bcast"
+	"Heis/pkg/network/bcast"
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
 	"Heis/pkg/timer"
+
 	// "Heis/pkg/message"
 	"flag"
 	"fmt"
@@ -18,11 +21,6 @@ import (
 	"os"
 )
 
-//Public funksjoner har stor bokstav!!!!!!! Private har liten !!!!!
-//!!!!!!!!!!!
-
-// Kanskje ha egne funksjoner som spawner andre go routines?? Typ Gruppere sammen de funksjonene som "jobber sammen" i en funksjon of sette opp channels of funksjoner i dem
-// Typ ha et tre med go funksjoner og grener som channels som hører sammen
 
 
 func main() {
@@ -69,6 +67,9 @@ func main() {
 	drv_doorTimerStart := make(chan float64)
 	drv_doorTimerFinished := make(chan bool)
 
+	newNodeTx := make(chan msgTypes.ElevatorStateMsg)
+	newNodeRx := make(chan msgTypes.ElevatorStateMsg)
+
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	elevatorStateCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
@@ -85,12 +86,15 @@ func main() {
 
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
+	go bcast.Transmitter(15648, newNodeTx)
+	go bcast.Receiver(15648, newNodeRx)
+
 	go peers.Transmitter(15647, id, peerTxEnable, &e)
 	go peers.Receiver(15647, peerUpdateCh, elevatorStateCh)
 	
 	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrder, localRequest, completedOrderCh)
 	
-	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, elevatorStateCh, completedOrderCh, peerUpdateCh)
+	go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, completedOrderCh, elevatorStateCh, peerUpdateCh, newNodeTx, newNodeRx)
 
 
 	fmt.Println("Started")
