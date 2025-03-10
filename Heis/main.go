@@ -73,7 +73,7 @@ func main() {
 	elevatorStateCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 
-	localAssignedOrder := make(chan elevio.ButtonEvent)
+	localAssignedOrder := make(chan elevio.ButtonEvent, 5)
 	localRequest := make(chan elevio.ButtonEvent, 5)
 	completedOrderCh := make(chan elevio.ButtonEvent)
 
