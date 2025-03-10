@@ -11,7 +11,7 @@ const NumElevators = 4
 
 func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 	if elevator.ElevatorBehaviour(e.Behaviour) != elevator.EB_Unavailable {
-
+		
 		duration := 0
 		elev := e
 
@@ -20,9 +20,8 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 			pair := fsm.ChooseDirection(elev)
 			elev.Dirn = pair.Dirn
 			elev.Behaviour = pair.Behaviour
-			if elev.Dirn == elevio.MD_Stop {
+			if pair.Dirn == elevio.MD_Stop {
 				return duration //Dersom EB_IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
-
 			}
 		case elevator.EB_Moving:
 			duration += TRAVEL_TIME / 2 //dersom heisen er i beveglse legger vi til en kostand
@@ -38,25 +37,25 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 				elev = costClearAtCurrentFloor(elev)
 				duration += int(elev.Config.DoorOpenDuration_s)
 				// might not need this?
-				pair := fsm.ChooseDirection(elev)
-				elev.Dirn = pair.Dirn
-				elev.Behaviour = pair.Behaviour
+				// pair := fsm.ChooseDirection(elev)
+				// elev.Dirn = pair.Dirn
+				// elev.Behaviour = pair.Behaviour
 				// ...
 				if elev.Dirn == elevio.MD_Stop {
 					return duration //returner duration når den simulerte heisen har kommet til en stopp
 				}
 			}
-			elev.Floor += int(elev.Dirn)  //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
-			duration += TRAVEL_TIME //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
+			elev.Floor += int(elev.Dirn) //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
+			duration += TRAVEL_TIME      //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
+
+		
 
 	}
 	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
 }
 
-
-
-//version without sending on completed channel to orders
+// version without sending on completed channel to orders
 func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
