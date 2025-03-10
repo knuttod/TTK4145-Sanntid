@@ -4,7 +4,6 @@ import (
 	"Heis/pkg/elevio"
 )
 
-
 type ClearRequestVariant int
 
 const (
@@ -31,19 +30,24 @@ const (
 )
 
 type Elevator struct {
-	Floor      int
-	Dirn       elevio.MotorDirection
-	LocalOrders     [][]bool		
-	// Map er egentlig litt lite effektivt da man ikke kan opdatere deler av verdien på en key, men heller må bare gi en helt ny verdi/struct. 
-	AssignedOrders   map[string][][]RequestState
+	Floor       int
+	Dirn        elevio.MotorDirection
+	LocalOrders [][]bool
+	// Map er egentlig litt lite effektivt da man ikke kan opdatere deler av verdien på en key, men heller må bare gi en helt ny verdi/struct.
+	// AssignedOrders   map[string][][]RequestState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
-	Id 		   string
+	Id         string
 
 	Config struct {
 		ClearRequestVariant ClearRequestVariant
 		DoorOpenDuration_s  float64
 	}
+}
+
+type NetworkElevator struct {
+	Elevator       Elevator
+	AssignedOrders map[string][][]RequestState
 }
 
 type DirnBehaviourPair struct {
@@ -60,16 +64,9 @@ func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string)
 	(*e).Config.ClearRequestVariant = CV_InDirn
 	(*e).Config.DoorOpenDuration_s = 3.0
 	(*e).Id = id
-	
-	AssignedOrders := make([][]RequestState, N_floors)
-	for i := range AssignedOrders {
-		AssignedOrders[i] = make([]RequestState, N_buttons)
-	}
-	(*e).AssignedOrders = map[string][][]RequestState{id: AssignedOrders}
 
 	(*e).LocalOrders = make([][]bool, N_floors)
 	for i := range (*e).LocalOrders {
 		(*e).LocalOrders[i] = make([]bool, N_buttons)
 	}
 }
-

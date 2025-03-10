@@ -2,6 +2,7 @@ package msgTypes
 
 import (
 	"Heis/pkg/elevator"
+	"Heis/pkg/elevio"
 )
 
 
@@ -15,7 +16,13 @@ type UdpMsg struct {
 type ElevatorStateMsg struct {
 	Message        string
 	Iter           int
-	Elevator elevator.Elevator
+	NetworkElevator elevator.NetworkElevator
 	Id       string
+}
+
+
+type FsmMsg struct {
+	Elevator 	elevator.Elevator
+	Event 		elevio.ButtonEvent
 }
 

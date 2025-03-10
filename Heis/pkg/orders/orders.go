@@ -23,10 +23,17 @@ const N_buttons = 3
 // and sends an ButtonEvent on localAssignedOrder channel if this eleveator should take order
 // Updates local assignedOrders from a remoteElevator sent on elevatorStateCh.
 // Also checks if an order to be done by this elevator should be started or not
-func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Elevator, 
-	localAssignedOrder, localRequest chan elevio.ButtonEvent, completedOrderCH chan elevio.ButtonEvent, 
-	elevatorStateCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
+func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.RequestState, selfId string,
+	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg,
+	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
 	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg) {
+
+
+	Elevators := map[string]elevator.NetworkElevator{}
+
+	Elevators[e.Id] = elevator.NetworkElevator{Elevator: e, AssignedOrders: *assignedOrders}
+
+
 
 	var activeLocalOrders [N_floors][N_buttons]bool
 	var activeElevators []string
@@ -45,50 +52,62 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 	// denne blir stuck noen ganger, vet ikke helt hvorfor??
 	for {
 		select {
-		case btn_input := <- localRequest:
-			
-			//For å passe på at man ikke endrer på slicen. Slices er tydelighvis by reference, forstår ikke helt, men er det som er feilen
-			local := make([][]bool, len((*e).LocalOrders))
-			for i := range local {
-				local[i] = append([]bool(nil), (*e).LocalOrders[i]...) // Ensure deep copy
-			}
+		case elevatorUpdate := <- buttonPressCH:
 			fmt.Println("assign")
-			assignOrder(e, *remoteElevators, activeElevators, btn_input) //denne endrer på localOrders mapet. Ikke riktig
-			(*e).LocalOrders = local
+
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
+			btn_input := elevatorUpdate.Event
+
+			//For å passe på at man ikke endrer på slicen. Slices er tydelighvis by reference, forstår ikke helt, men er det som er feilen
+			copy := make([][]bool, len(Elevators[selfId].Elevator.LocalOrders))
+			for i := range copy {
+				copy[i] = append([]bool(nil), Elevators[selfId].Elevator.LocalOrders[i]...) // Ensure deep copy
+			}
+			temp := Elevators[selfId]
+			temp.Elevator.LocalOrders = copy
+			Elevators[selfId] = temp
+			assignOrder(assignedOrders, Elevators, activeElevators, selfId, btn_input) //denne endrer på localOrders mapet. Ikke riktig
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
 
 			resetTimer <- timeOutTime
 
-		case completed_order := <- completedOrderCH:
+		case elevatorUpdate := <- completedOrderCH:
 			fmt.Println("done")
-			temp := (*e).AssignedOrders[(*e).Id]
-			temp[completed_order.Floor][completed_order.Button] = elevator.Complete
-			(*e).AssignedOrders[(*e).Id] = temp
+			
+			completed_order := elevatorUpdate.Event
 
+			temp := (*assignedOrders)[selfId]
+			temp[completed_order.Floor][completed_order.Button] = elevator.Complete
+			(*assignedOrders)[selfId] = temp
+
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
 			resetTimer <- timeOutTime
 		
-		case remoteElevatorState := <-elevatorStateCh:
-			if remoteElevatorState.Id != (*e).Id {
+		case remoteElevatorState := <-remoteElevatorCh:
+			if remoteElevatorState.Id != selfId {
 				// fmt.Println("External update")
-				updateFromRemoteElevator(remoteElevators, e, remoteElevatorState)
-				if assignedOrdersKeysCheck(*remoteElevators, *e, activeElevators){
-					orderMerger(e, *remoteElevators, activeElevators)
+				updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
+				if assignedOrdersKeysCheck(*assignedOrders, Elevators, selfId, activeElevators){
+					orderMerger(assignedOrders, Elevators, activeElevators, selfId)
 				}
-				// fmt.Println("Local: ", (*e).AssignedOrders)
+				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.Elevator.AssignedOrders)
 				// fmt.Println("own: ", (*e).LocalOrders)
-
+				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 				resetTimer <- timeOutTime
 			}
 		case remoteElevatorState := <- newNodeRx:
-			if remoteElevatorState.Id != (*e).Id {
+			if remoteElevatorState.Id != selfId {
 				if new {
 					fmt.Println("New update")
-					updateFromRemoteElevator(remoteElevators, e, remoteElevatorState)
-					if assignedOrdersKeysCheck(*remoteElevators, *e, activeElevators){
-						restartOrdersSynchroniser(e, remoteElevatorState)
+					updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
+					if assignedOrdersKeysCheck(*assignedOrders, Elevators, selfId, activeElevators){
+						restartOrdersSynchroniser(assignedOrders, remoteElevatorState)
 						new = false
 					}
+
 				}
+				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
 
 		case p := <- peerUpdateCh:
@@ -101,7 +120,10 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
 
 			if len(p.New) > 0 {
-				newNodeTx <- msgTypes.ElevatorStateMsg{Elevator: *e, Id: (*e).Id}
+				newNodeTx <- msgTypes.ElevatorStateMsg{
+					NetworkElevator: Elevators[selfId],
+					Id: selfId,
+				}
 				fmt.Println("newmsg")
 			}
 
@@ -121,11 +143,11 @@ func OrderHandler(e *elevator.Elevator, remoteElevators *map[string]elevator.Ele
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
-				if (*e).AssignedOrders[(*e).Id][floor][btn] != elevator.Confirmed {
+				if (*assignedOrders)[selfId][floor][btn] != elevator.Confirmed {
 					activeLocalOrders[floor][btn] = false
 				}
-				if assignedOrdersKeysCheck(*remoteElevators, *e, activeElevators){
-					if shouldStartLocalOrder(e, *remoteElevators, activeElevators, (*e).Id, floor, btn) && !activeLocalOrders[floor][btn] {
+				if assignedOrdersKeysCheck(*assignedOrders, Elevators, selfId, activeElevators){
+					if shouldStartLocalOrder(*assignedOrders, Elevators, activeElevators, selfId, floor, btn) && !activeLocalOrders[floor][btn] {
 						// fmt.Println("her")
 						localAssignedOrder <- elevio.ButtonEvent{
 							Floor:  floor,

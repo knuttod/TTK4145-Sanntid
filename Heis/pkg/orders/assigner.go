@@ -23,39 +23,9 @@ import (
 // 	for _, elev := range elevators {
 // 		if elev.Behave == elevator.Unavailable {
 // 			for floor := range elev.(*e).AssignedOrders {
-// 				for button := 0; button < len(elev.(*e).AssignedOrders[floor])-1; button++ {
-// 					if elev.(*e).AssignedOrders[floor][button] == elevator.Order ||
-// 						elev.(*e).AssignedOrders[floor][button] == elevator.Comfirmed {
-// 						if elevators[elevator.LocalElevator].ID == strconv.Itoa(lowestID) {
-// 							ch_newLoacalOrder <- elevio.ButtonEvent{
-// 								Floor:  floor,
-// 								Button: elevio.ButtonType(button),
-// 							}
-// 						}
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-// func ReassignOrders(elevators map[string]elevator.Elevator, ch_newLoacalOrder chan elevio.ButtonEvent) {
-// 	lowestID := 999
-
-// 	for _, elev := range elevators {
-// 		if elev.Behaviour != elevator.Unavailable {
-// 			ID, _ := strconv.Atoi(elev.Id)
-// 			if ID < lowestID {
-// 				lowestID = ID
-// 			}
-// 		}
-// 	}
-// 	for index, elev := range elevators {
-// 		if elev.Behaviour == elevator.Unavailable {
-// 			for floor := range elev.(*e).AssignedOrders[index] {
-// 				for button := 0; button < len(elev.(*e).AssignedOrders[index][floor])-1; button++ {
-// 					if elev.(*e).AssignedOrders[index][floor][button] == elevator.Order ||
-// 						elev.(*e).AssignedOrders[index][floor][button] == elevator.Comfirmed {
+// 				for button := 0; button < 2; button++ {
+// 					// if elev.AssignedOrders[floor][button] == elevator.Order ||
+// 					if elev.AssignedOrders[elev.Id][floor][button] == elevator.Confirmed {
 // 						if elevators[elevator.LocalElevator].ID == strconv.Itoa(lowestID) {
 // 							ch_newLoacalOrder <- elevio.ButtonEvent{
 // 								Floor:  floor,
@@ -71,43 +41,32 @@ import (
 
 
 
-func assignOrder(e * elevator.Elevator, remoteElevators map[string]elevator.Elevator, activeElevators []string, order elevio.ButtonEvent) {
+
+func assignOrder(AssignedOrders *map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, order elevio.ButtonEvent) {
 	
 	
-	if len((*e).AssignedOrders) < 2 || order.Button == elevio.BT_Cab {
-		if (*e).AssignedOrders[(*e).Id][order.Floor][order.Button] == elevator.None && ordersSynced(*e, remoteElevators, activeElevators, (*e).Id, order.Floor, int(order.Button)){
-			temp := (*e).AssignedOrders[(*e).Id]
+	if len((*AssignedOrders)) < 2 || order.Button == elevio.BT_Cab {
+		if (*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.None && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, selfId, order.Floor, int(order.Button)){
+			temp := (*AssignedOrders)[selfId]
 			temp[order.Floor][order.Button] = elevator.Order
-			(*e).AssignedOrders[(*e).Id] = temp
+			(*AssignedOrders)[selfId] = temp
 		}
 		return
 	}
 	minCost := 99999
-	elev := *e
-	elevCost := cost(elev, order)  //denne må endres på, oppdaterer local orders mappet, noe den ikke skal
-	minCost = elevCost
-	// elevCost := 0
-	minElev := (*e).Id
-	// for id, elev := range remoteElevators {
-	// 	elevCost = cost(elev, order)
-	// 	if elevCost < minCost {
-	// 		minCost = elevCost
-	// 		minElev = id
-	// 	}
-	// }
+	 //denne må endres på, oppdaterer local orders mappet, noe den ikke skal
+	elevCost := 0
+	var minElev string
 	for _, elev := range activeElevators{
-		if elev == (*e).Id {
-			continue
-		}
-		elevCost = cost(remoteElevators[elev], order)
+		elevCost = cost(Elevators[elev].Elevator, order)
 		if elevCost < minCost {
 			minCost = elevCost
 			minElev = elev
 		}
 	}
-	if (*e).AssignedOrders[minElev][order.Floor][order.Button] == elevator.None && ordersSynced(*e, remoteElevators, activeElevators, minElev, order.Floor, int(order.Button)){
-		temp := (*e).AssignedOrders[minElev]
+	if (*AssignedOrders)[minElev][order.Floor][order.Button] == elevator.None && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, minElev, order.Floor, int(order.Button)){
+		temp := (*AssignedOrders)[minElev]
 		temp[order.Floor][order.Button] = elevator.Order
-		(*e).AssignedOrders[minElev] = temp
+		(*AssignedOrders)[minElev] = temp
 	}
 }
