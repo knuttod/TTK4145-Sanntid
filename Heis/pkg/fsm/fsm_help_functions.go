@@ -31,7 +31,7 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 				Elevator: *e,
 				Event: elevio.ButtonEvent {
 					Floor: btn_floor,
-					Button: elevio.ButtonType(btn_floor),
+					Button: btn_type,
 				},
 			}
 		} else {

@@ -35,6 +35,10 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 
 		}
 		for duration < 999 {
+			// Må håndtere at man ikke drar til 5 etasje
+			if elev.Floor < 0 || elev.Floor > 3 {
+				break
+			}
 			if fsm.ShouldStop(elev) {
 				elev = costClearAtCurrentFloor(elev)
 				duration += int(elev.Config.DoorOpenDuration_s)
