@@ -34,6 +34,8 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 	fsmToOrdersCH <- *elev
 
 	for {
+		
+
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
 		case button_input := <-drv_buttons:
@@ -63,9 +65,14 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 				// fmt.Println("drv_doortimer timed out")
 				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
 			}
+		default:
+			//non blocking
 		}
 
-		fsmToOrdersCH <- *elev
+		select {
+		case fsmToOrdersCH <- *elev:
+		default:
+		}
 
 	}
 }

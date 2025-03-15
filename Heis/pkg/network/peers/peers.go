@@ -84,9 +84,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 
 		id := msg.Id // Extract peer ID
 
-		// Forward the full elevator state to order module
-		elevatorStateCh <- msg
-
+		
 		// Track peer presence
 		p.New = ""
 		if id != "" {
@@ -110,17 +108,20 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 		// Send peer update only if there was a change
 		if updated {
 			p.Peers = make([]string, 0, len(lastSeen))
-
+			
 			for k := range lastSeen {
 				p.Peers = append(p.Peers, k)
 			}
-
+			
 			sort.Strings(p.Peers)
 			sort.Strings(p.Lost)
-
+			
 			peerUpdateCh <- p
-
+			
 			fmt.Println("Connected peers:", p.Peers)
 		}
+		
+		// Forward the full elevator state to order module
+		elevatorStateCh <- msg
 	}
 }

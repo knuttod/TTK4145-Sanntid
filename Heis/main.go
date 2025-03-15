@@ -56,7 +56,7 @@ func main() {
 	elevator.Elevator_init(&e, NumFloors, NumButtons, NumElevators, id)
 	elevio.Init("localhost:"+port, NumFloors)
 
-	var assignedOrders map[string][][]elevator.RequestState
+	var assignedOrders map[string][][]elevator.OrderState
 	assignedOrders = orders.AssignedOrdersInit(id)
 
 	drv_buttons := make(chan elevio.ButtonEvent)

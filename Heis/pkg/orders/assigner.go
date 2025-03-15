@@ -3,20 +3,19 @@ package orders
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
 	// "fmt"
 	//"strconv"
 )
 
-func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrders map[string][][]elevator.RequestState, reassignOrderCH chan elevio.ButtonEvent) {
+func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrders map[string][][]elevator.OrderState, reassignOrderCH chan elevio.ButtonEvent) {
 	
 	for _, elev := range elevators {
 		if elev.Elevator.Behaviour == elevator.EB_Unavailable {
 			orders := assignedOrders[elev.Elevator.Id]
 			for floor := range orders{
 				for button := 0; button < 2; button++ {
-					if orders[floor][button] == elevator.Order || 
-					orders[floor][button] == elevator.Confirmed {
+					if orders[floor][button] == elevator.Ordr_Unconfirmed || 
+					orders[floor][button] == elevator.Ordr_Confirmed {
 						reassignOrderCH <- elevio.ButtonEvent{
 							Floor:  floor,
 							Button: elevio.ButtonType(button),
@@ -38,13 +37,13 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 // temp.Elevator.LocalOrders = copy
 // Elevators[selfId] = temp
 
-func assignOrder(AssignedOrders *map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, order elevio.ButtonEvent) {
+func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, order elevio.ButtonEvent) {
 	
 	
 	if len((*AssignedOrders)) < 2 || order.Button == elevio.BT_Cab {
-		if (*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.None && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, selfId, order.Floor, int(order.Button)){
+		if (((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_None) || ((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_Unknown)) && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, selfId, order.Floor, int(order.Button)){
 			temp := (*AssignedOrders)[selfId]
-			temp[order.Floor][order.Button] = elevator.Order
+			temp[order.Floor][order.Button] = elevator.Ordr_Unconfirmed
 			(*AssignedOrders)[selfId] = temp
 		}
 		return
@@ -55,20 +54,18 @@ func assignOrder(AssignedOrders *map[string][][]elevator.RequestState, Elevators
 	var minElev string
 	for _, elev := range activeElevators{
 		//temp
-		if (*AssignedOrders)[elev][order.Floor][order.Button] == elevator.Confirmed {
+		if (*AssignedOrders)[elev][order.Floor][order.Button] == elevator.Ordr_Confirmed {
 			return
 		}
-		fmt.Println("ID, ", Elevators[elev].Elevator.Id)
-		fmt.Println("Floor, ", Elevators[elev].Elevator.Floor)
 		elevCost = cost(Elevators[elev].Elevator, order)
 		if elevCost < minCost {
 			minCost = elevCost
 			minElev = elev
 		}
 	}
-	if (*AssignedOrders)[minElev][order.Floor][order.Button] == elevator.None && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, minElev, order.Floor, int(order.Button)){
+	if (((*AssignedOrders)[minElev][order.Floor][order.Button] == elevator.Ordr_None) || ((*AssignedOrders)[minElev][order.Floor][order.Button] == elevator.Ordr_Unknown)) && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, minElev, order.Floor, int(order.Button)){
 		temp := (*AssignedOrders)[minElev]
-		temp[order.Floor][order.Button] = elevator.Order
+		temp[order.Floor][order.Button] = elevator.Ordr_Unconfirmed
 		(*AssignedOrders)[minElev] = temp
 	}
 }

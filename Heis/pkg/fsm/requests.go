@@ -3,7 +3,6 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
 	//"fmt"
 )
 
@@ -80,7 +79,6 @@ func ChooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
 
 func ShouldStop(e elevator.Elevator) bool {
 	//Får av en eller annen rar grunn etasje 4??
-	fmt.Println(e.Floor)
 	switch e.Dirn {
 	case elevio.MD_Down:
 		if (e.LocalOrders[e.Floor][elevio.BT_HallDown] == true) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == true) || (!Below(e)) {
@@ -166,6 +164,7 @@ func ClearAtCurrentFloor(e elevator.Elevator, completedOrderCH chan elevio.Butto
 						Button: elevio.BT_HallUp,
 				}
 			}
+			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
 			completedOrderCH <- elevio.ButtonEvent{
 					Floor: e.Floor,
 					Button: elevio.BT_HallDown,

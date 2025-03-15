@@ -14,11 +14,12 @@ const (
 type OrderState int
 
 const (
-	Ordr_None 		OrderState = 0
+	Ordr_None 			OrderState = 0
 	Ordr_Unconfirmed    OrderState = 1
 	Ordr_Confirmed 		OrderState = 2
+	Ordr_Complete		OrderState = 3
 	
-	Ordr_Unknown   		OrderState = 4
+	Ordr_Unknown   		OrderState = -1
 )
 
 type ElevatorBehaviour int
