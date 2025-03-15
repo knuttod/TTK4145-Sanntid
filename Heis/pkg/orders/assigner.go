@@ -1,43 +1,32 @@
 package orders
 
 import (
-
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-
+	"fmt"
 	// "fmt"
 	//"strconv"
 )
 
-// func ReassignOrders(elevators []*elevator.Elevator, ch_newLoacalOrder chan elevio.ButtonEvent) {
-// 	lowestID := 999
-
-// 	for _, elev := range elevators {
-// 		if elev.Behave != elevator.Unavailable {
-// 			ID, _ := strconv.Atoi(elev.ID)
-// 			if ID < lowestID {
-// 				lowestID = ID
-// 			}
-// 		}
-// 	}
-// 	for _, elev := range elevators {
-// 		if elev.Behave == elevator.Unavailable {
-// 			for floor := range elev.(*e).AssignedOrders {
-// 				for button := 0; button < 2; button++ {
-// 					// if elev.AssignedOrders[floor][button] == elevator.Order ||
-// 					if elev.AssignedOrders[elev.Id][floor][button] == elevator.Confirmed {
-// 						if elevators[elevator.LocalElevator].ID == strconv.Itoa(lowestID) {
-// 							ch_newLoacalOrder <- elevio.ButtonEvent{
-// 								Floor:  floor,
-// 								Button: elevio.ButtonType(button),
-// 							}
-// 						}
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrders map[string][][]elevator.RequestState, reassignOrderCH chan elevio.ButtonEvent) {
+	
+	for _, elev := range elevators {
+		if elev.Elevator.Behaviour == elevator.EB_Unavailable {
+			orders := assignedOrders[elev.Elevator.Id]
+			for floor := range orders{
+				for button := 0; button < 2; button++ {
+					if orders[floor][button] == elevator.Order || 
+					orders[floor][button] == elevator.Confirmed {
+						reassignOrderCH <- elevio.ButtonEvent{
+							Floor:  floor,
+							Button: elevio.ButtonType(button),
+						}
+					}
+				}
+			}
+		}
+	}
+}
 
 
 
@@ -58,6 +47,12 @@ func assignOrder(AssignedOrders *map[string][][]elevator.RequestState, Elevators
 	elevCost := 0
 	var minElev string
 	for _, elev := range activeElevators{
+		//temp
+		if (*AssignedOrders)[elev][order.Floor][order.Button] == elevator.Confirmed {
+			return
+		}
+		fmt.Println("ID, ", Elevators[elev].Elevator.Id)
+		fmt.Println("Floor, ", Elevators[elev].Elevator.Floor)
 		elevCost = cost(Elevators[elev].Elevator, order)
 		if elevCost < minCost {
 			minCost = elevCost

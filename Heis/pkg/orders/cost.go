@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
+	// "fmt"
 )
 
 const TRAVEL_TIME = 10
@@ -33,7 +34,11 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
 
 		}
-		for {
+		for duration < 999 {
+			// Må håndtere at man ikke drar til 5 etasje
+			if elev.Floor < 0 || elev.Floor > 3 {
+				break
+			}
 			if fsm.ShouldStop(elev) {
 				elev = costClearAtCurrentFloor(elev)
 				duration += int(elev.Config.DoorOpenDuration_s)
@@ -49,6 +54,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 			elev.Floor += int(elev.Dirn)  //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
 			duration += TRAVEL_TIME //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
+		return 999
 
 	}
 	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable

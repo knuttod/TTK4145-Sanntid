@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
+	"fmt"
 	// "fmt"
 )
 
@@ -16,15 +17,20 @@ const N_buttons = 3
 // Also takes input from elevio on drv channels. Interacts with external timer on doorTimerStartCH and doorTimerFinishedCH
 func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr,
 	drv_stop chan bool, doorTimerStartCH chan float64, doorTimerFinishedCH chan bool,
-	id string, localAssignedOrderCH chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg) {
+	id string, localAssignedOrderCH chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg, fsmToOrdersCH chan elevator.Elevator) {
 
-	if elevio.GetFloor() == -1 {
+	floor := elevio.GetFloor()
+	if floor == -1 {
 		initBetweenFloors(elev)
 		for (*elev).Floor == -1 {
 			current_floor := <-drv_floors
 			floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
 		} 
+	} else {
+		(*elev).Floor = floor
 	}
+
+	fmt.Println((*elev).Floor)
 
 	
 
@@ -56,7 +62,11 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 				// fmt.Println("drv_doortimer timed out")
 				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
 			}
-
+		default:
+			// to not stall
 		}
+
+		fsmToOrdersCH <- *elev
+
 	}
 }

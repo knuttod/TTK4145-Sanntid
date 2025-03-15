@@ -26,7 +26,11 @@ const N_buttons = 3
 func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.RequestState, selfId string,
 	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg,
 	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
-	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg) {
+	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg, 
+	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
+	
+	
+	reassignOrderCH := make(chan elevio.ButtonEvent, 100) //veldig jalla løsning
 
 
 	Elevators := map[string]elevator.NetworkElevator{}
@@ -52,6 +56,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 	// denne blir stuck noen ganger, vet ikke helt hvorfor??
 	for {
 		select {
+		case elev := <- fsmToOrdersCH:
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
 		case elevatorUpdate := <- buttonPressCH:
 			fmt.Println("assign")
 
@@ -68,13 +74,32 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 			Elevators[selfId] = temp
 			assignOrder(assignedOrders, Elevators, activeElevators, selfId, btn_input) //denne endrer på localOrders mapet. Ikke riktig
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
+			
 
-			resetTimer <- timeOutTime
+			//resetTimer <- timeOutTime
+		
+		case request := <- reassignOrderCH:
+
+			fmt.Println("reassign")
+
+			copy := make([][]bool, len(Elevators[selfId].Elevator.LocalOrders))
+			for i := range copy {
+				copy[i] = append([]bool(nil), Elevators[selfId].Elevator.LocalOrders[i]...) // Ensure deep copy
+			}
+			temp := Elevators[selfId]
+			temp.Elevator.LocalOrders = copy
+			
+			assignOrder(assignedOrders, Elevators, activeElevators, selfId, request) //denne endrer på localOrders mapet. Ikke riktig
+			Elevators[selfId] = temp
+			
 
 		case elevatorUpdate := <- completedOrderCH:
 			fmt.Println("done")
 			
 			completed_order := elevatorUpdate.Event
+
+			fmt.Println("Button: ", completed_order.Button)
+			fmt.Println("Floor: ", completed_order.Floor)
 
 			temp := (*assignedOrders)[selfId]
 			temp[completed_order.Floor][completed_order.Button] = elevator.Complete
@@ -91,8 +116,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 					orderMerger(assignedOrders, Elevators, activeElevators, selfId)
 				}
 				// fmt.Println("Local: ", (*assignedOrders))
-				// fmt.Println("Remote: ", remoteElevatorState.Elevator.AssignedOrders)
-				// fmt.Println("own: ", (*e).LocalOrders)
+				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
+				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 				resetTimer <- timeOutTime
 			}
@@ -119,18 +144,38 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 			// kjøre reassign orders på heisene som ligger i lost. 
 			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
 
-			if len(p.New) > 0 {
+			if len(p.New) > 0 && !new{
 				newNodeTx <- msgTypes.ElevatorStateMsg{
 					NetworkElevator: Elevators[selfId],
 					Id: selfId,
 				}
 				fmt.Println("newmsg")
 			}
+			if len(p.Lost) > 0 {
+				for _, elev := range p.Lost {
+					temp := Elevators[elev]
+					temp.Elevator.Behaviour = elevator.EB_Unavailable
+					Elevators[elev] = temp
+				}
+
+				reassignOrders(Elevators, *assignedOrders, reassignOrderCH)
+				for _, elev := range p.Lost {
+					temp := (*assignedOrders)[elev]
+					for floor := range N_floors {
+						for btn := range N_buttons -1 {
+							temp[floor][btn] = elevator.Complete
+						}
+					}
+					(*assignedOrders)[elev] = temp
+				}
+			}
 
 			resetTimer <- timeOutTime
 
 		case <- timerTimeOut:
 			fmt.Println("Timer timed out")
+		default:
+			//to not stall
 			
 			
 		// case for disconnection or timout for elevator to reassign orders
@@ -140,13 +185,22 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 		// Da kan man håndtere dersom man har forskjellige assignedOrders, F.eks dersom en heis har 0 og en har 2 og man vil ha 2 kan man sette 1 i den som er 0, motsatt sette 3 i den som er 2.
 		}
 
+		
+
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				if (*assignedOrders)[selfId][floor][btn] != elevator.Confirmed {
 					activeLocalOrders[floor][btn] = false
 				}
+				// fmt.Println("Active: ", activeElevators)
+				// fmt.Println("Local: ", (*assignedOrders))
+				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
+				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				if assignedOrdersKeysCheck(*assignedOrders, Elevators, selfId, activeElevators){
+					if len(activeElevators) == 1 {
+						confirmOrCloseOrders(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn)
+					}
 					if shouldStartLocalOrder(*assignedOrders, Elevators, activeElevators, selfId, floor, btn) && !activeLocalOrders[floor][btn] {
 						// fmt.Println("her")
 						localAssignedOrder <- elevio.ButtonEvent{
@@ -161,6 +215,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 		//set lights
 		//litt buggy på macsimmen, kanskje bedre andre steder?
 		// setAllHallLightsfromRemote(*remoteElevators, activeElevators, (*e).Id)
+
+		//might need buffering/can be stalled by the 15ms wait time in peers
+		ordersToPeersCH <- Elevators[selfId]
 	}
 }
 

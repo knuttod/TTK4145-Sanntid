@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
+	// "fmt"
 	"reflect"
 	"sort"
 )
@@ -50,7 +51,7 @@ func orderMerger(AssignedOrders *map[string][][]elevator.RequestState, Elevators
 						temp[floor][btn] = updateState
 						(*AssignedOrders)[id] = temp
 					}
-				}	
+				}
 				confirmOrCloseOrders(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
 			}
 		}
@@ -65,6 +66,9 @@ func ordersSynced(AssignedOrders map[string][][]elevator.RequestState, Elevators
 	// 	}
 	// }
 	// return true
+	// if len(activeElevators) == 1 {
+	// 	return true
+	// }
 	for _, elev := range activeElevators {
 		if elev == selfId {
 			continue

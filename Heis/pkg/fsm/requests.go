@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
+	"fmt"
 	//"fmt"
 )
 
@@ -79,6 +80,8 @@ func ChooseDirection(e elevator.Elevator) elevator.DirnBehaviourPair {
 }
 
 func ShouldStop(e elevator.Elevator) bool {
+	//Får av en eller annen rar grunn etasje 4??
+	fmt.Println(e.Floor)
 	switch e.Dirn {
 	case elevio.MD_Down:
 		if (e.LocalOrders[e.Floor][elevio.BT_HallDown] == true) || (e.LocalOrders[e.Floor][elevio.BT_Cab] == true) || (!Below(e)) {
