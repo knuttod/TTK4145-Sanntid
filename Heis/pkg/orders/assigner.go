@@ -3,6 +3,7 @@ package orders
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"fmt"
 	// "fmt"
 	//"strconv"
 )
@@ -50,6 +51,8 @@ func assignOrder(AssignedOrders *map[string][][]elevator.RequestState, Elevators
 		if (*AssignedOrders)[elev][order.Floor][order.Button] == elevator.Confirmed {
 			return
 		}
+		fmt.Println("ID, ", Elevators[elev].Elevator.Id)
+		fmt.Println("Floor, ", Elevators[elev].Elevator.Floor)
 		elevCost = cost(Elevators[elev].Elevator, order)
 		if elevCost < minCost {
 			minCost = elevCost

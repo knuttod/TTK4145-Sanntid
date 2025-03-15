@@ -26,7 +26,8 @@ const N_buttons = 3
 func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.RequestState, selfId string,
 	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg,
 	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
-	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg) {
+	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg, 
+	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 	
 	
 	reassignOrderCH := make(chan elevio.ButtonEvent, 100) //veldig jalla løsning
@@ -55,6 +56,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 	// denne blir stuck noen ganger, vet ikke helt hvorfor??
 	for {
 		select {
+		case elev := <- fsmToOrdersCH:
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
 		case elevatorUpdate := <- buttonPressCH:
 			fmt.Println("assign")
 
@@ -171,6 +174,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 
 		case <- timerTimeOut:
 			fmt.Println("Timer timed out")
+		default:
+			//to not stall
 			
 			
 		// case for disconnection or timout for elevator to reassign orders
@@ -189,9 +194,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 					activeLocalOrders[floor][btn] = false
 				}
 				// fmt.Println("Active: ", activeElevators)
-				fmt.Println("Local: ", (*assignedOrders))
+				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
-				fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
+				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				if assignedOrdersKeysCheck(*assignedOrders, Elevators, selfId, activeElevators){
 					if len(activeElevators) == 1 {
 						confirmOrCloseOrders(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn)
@@ -210,6 +215,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 		//set lights
 		//litt buggy på macsimmen, kanskje bedre andre steder?
 		// setAllHallLightsfromRemote(*remoteElevators, activeElevators, (*e).Id)
+
+		//might need buffering/can be stalled by the 15ms wait time in peers
+		ordersToPeersCH <- Elevators[selfId]
 	}
 }
 

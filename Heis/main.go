@@ -78,6 +78,9 @@ func main() {
 	buttonPressCH := make(chan msgTypes.FsmMsg) //might need buffer
 	completedOrderCh := make(chan msgTypes.FsmMsg)
 
+	fsmToOrdersCH := make(chan elevator.Elevator)
+	ordersToPeersCH := make(chan elevator.NetworkElevator)
+
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
@@ -89,13 +92,13 @@ func main() {
 	go bcast.Transmitter(15648, newNodeTx)
 	go bcast.Receiver(15648, newNodeRx)
 
-	go peers.Transmitter(15647, id, peerTxEnable, &e, &assignedOrders)
+	go peers.Transmitter(15647, id, peerTxEnable, ordersToPeersCH)
 	go peers.Receiver(15647, peerUpdateCh, remoteElevatorCh)
 	
-	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrderCH, buttonPressCH, completedOrderCh)
+	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	
 	// go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx)
-	go orders.OrderHandler(e, &assignedOrders, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx)
+	go orders.OrderHandler(e, &assignedOrders, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx, fsmToOrdersCH, ordersToPeersCH)
 
 
 	fmt.Println("Started")

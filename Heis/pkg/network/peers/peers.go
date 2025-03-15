@@ -1,9 +1,10 @@
 package peers
 
 import (
-	"Heis/pkg/network/conn"
-	"Heis/pkg/msgTypes"
 	"Heis/pkg/elevator"
+	"Heis/pkg/msgTypes"
+	"Heis/pkg/network/conn"
+	// "Heis/pkg/orders"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -23,9 +24,11 @@ const timeout = 500 * time.Millisecond
 
 
 // Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
-func Transmitter(port int, id string, transmitEnable <-chan bool, elev *elevator.Elevator, AssignedOrders *map[string][][]elevator.RequestState) {
+func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+
+	networkElevator := <- ordersToPeersCH
 
 	enable := true
 	for {
@@ -35,12 +38,15 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, elev *elevator
 		}
 
 		if enable {
+			//update information of this elevator if available
+			select {
+			case networkElevator = <- ordersToPeersCH:
+			default:
+				//just to make the select non blocking
+			}
 			// Create elevator state message
 			elevatorStateMsg := msgTypes.ElevatorStateMsg{
-				NetworkElevator: elevator.NetworkElevator{
-					Elevator: *elev, // Pass by reference
-					AssignedOrders: *AssignedOrders,
-				},
+				NetworkElevator: networkElevator,
 				Id:       id,
 			}
 
