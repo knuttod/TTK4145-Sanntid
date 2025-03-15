@@ -23,8 +23,8 @@ const N_buttons = 3
 // and sends an ButtonEvent on localAssignedOrder channel if this eleveator should take order
 // Updates local assignedOrders from a remoteElevator sent on elevatorStateCh.
 // Also checks if an order to be done by this elevator should be started or not
-func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.RequestState, selfId string,
-	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg,
+func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.OrderState, selfId string,
+	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan elevio.ButtonEvent,
 	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
 	newNodeTx, newNodeRx chan msgTypes.ElevatorStateMsg, 
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
@@ -58,54 +58,28 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 		select {
 		case elev := <- fsmToOrdersCH:
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
-		case elevatorUpdate := <- buttonPressCH:
+		case btn_input := <- buttonPressCH:
 			fmt.Println("assign")
-
-			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
-			btn_input := elevatorUpdate.Event
-
-			//For å passe på at man ikke endrer på slicen. Slices er tydelighvis by reference, forstår ikke helt, men er det som er feilen
-			copy := make([][]bool, len(Elevators[selfId].Elevator.LocalOrders))
-			for i := range copy {
-				copy[i] = append([]bool(nil), Elevators[selfId].Elevator.LocalOrders[i]...) // Ensure deep copy
-			}
-			temp := Elevators[selfId]
-			temp.Elevator.LocalOrders = copy
-			Elevators[selfId] = temp
 			assignOrder(assignedOrders, Elevators, activeElevators, selfId, btn_input) //denne endrer på localOrders mapet. Ikke riktig
-			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			
-
-			//resetTimer <- timeOutTime
+			//starte timer for å sjekke tid
 		
 		case request := <- reassignOrderCH:
-
-			fmt.Println("reassign")
-
-			copy := make([][]bool, len(Elevators[selfId].Elevator.LocalOrders))
-			for i := range copy {
-				copy[i] = append([]bool(nil), Elevators[selfId].Elevator.LocalOrders[i]...) // Ensure deep copy
-			}
-			temp := Elevators[selfId]
-			temp.Elevator.LocalOrders = copy
-			
 			assignOrder(assignedOrders, Elevators, activeElevators, selfId, request) //denne endrer på localOrders mapet. Ikke riktig
-			Elevators[selfId] = temp
+			Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			
+			//starte timer for å sjekke tid
 
-		case elevatorUpdate := <- completedOrderCH:
-			fmt.Println("done")
-			
-			completed_order := elevatorUpdate.Event
+		
+		//denne trenger kun å si ifra at den er ferdig for timer
+		case completed_order := <- completedOrderCH:
+			// fmt.Println("done")
 
-			fmt.Println("Button: ", completed_order.Button)
-			fmt.Println("Floor: ", completed_order.Floor)
+			// setOrder(assignedOrders, selfId, completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
+			// Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 
-			temp := (*assignedOrders)[selfId]
-			temp[completed_order.Floor][completed_order.Button] = elevator.Complete
-			(*assignedOrders)[selfId] = temp
-
-			Elevators[selfId] = elevator.NetworkElevator{Elevator: elevatorUpdate.Elevator, AssignedOrders: *assignedOrders}
+			// //si til timer at den ble fullført innen tiden
 			resetTimer <- timeOutTime
 		
 		case remoteElevatorState := <-remoteElevatorCh:
@@ -144,6 +118,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 			// kjøre reassign orders på heisene som ligger i lost. 
 			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
 
+
+			//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
+
 			if len(p.New) > 0 && !new{
 				newNodeTx <- msgTypes.ElevatorStateMsg{
 					NetworkElevator: Elevators[selfId],
@@ -163,7 +140,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 					temp := (*assignedOrders)[elev]
 					for floor := range N_floors {
 						for btn := range N_buttons -1 {
-							temp[floor][btn] = elevator.Complete
+							temp[floor][btn] = elevator.Ordr_Complete
 						}
 					}
 					(*assignedOrders)[elev] = temp
@@ -190,7 +167,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.R
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
-				if (*assignedOrders)[selfId][floor][btn] != elevator.Confirmed {
+				if (*assignedOrders)[selfId][floor][btn] != elevator.Ordr_Confirmed {
 					activeLocalOrders[floor][btn] = false
 				}
 				// fmt.Println("Active: ", activeElevators)

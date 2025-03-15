@@ -3,7 +3,6 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/msgTypes"
 	"fmt"
 	// "fmt"
 )
@@ -17,7 +16,7 @@ const N_buttons = 3
 // Also takes input from elevio on drv channels. Interacts with external timer on doorTimerStartCH and doorTimerFinishedCH
 func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr,
 	drv_stop chan bool, doorTimerStartCH chan float64, doorTimerFinishedCH chan bool,
-	id string, localAssignedOrderCH chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan msgTypes.FsmMsg, fsmToOrdersCH chan elevator.Elevator) {
+	id string, localAssignedOrderCH chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan elevio.ButtonEvent, fsmToOrdersCH chan elevator.Elevator) {
 
 	floor := elevio.GetFloor()
 	if floor == -1 {
@@ -32,13 +31,13 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 
 	fmt.Println((*elev).Floor)
 
-	
+	fsmToOrdersCH <- *elev
 
 	for {
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
 		case button_input := <-drv_buttons:
-			buttonPressCH <- msgTypes.FsmMsg{Elevator: *elev, Event: button_input}
+			buttonPressCH <- button_input
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
@@ -51,8 +50,10 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 		case obstruction := <-drv_obstr:
 			if obstruction {
 				(*elev).Obstructed = true
+				(*elev).Behaviour = elevator.EB_Unavailable
 			} else {
 				(*elev).Obstructed = false
+				(*elev).Behaviour = elevator.EB_DoorOpen
 				doorTimerStartCH <- (*elev).Config.DoorOpenDuration_s
 			}
 
@@ -62,8 +63,6 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 				// fmt.Println("drv_doortimer timed out")
 				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
 			}
-		default:
-			// to not stall
 		}
 
 		fsmToOrdersCH <- *elev

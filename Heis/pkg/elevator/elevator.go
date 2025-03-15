@@ -11,13 +11,14 @@ const (
 	CV_InDirn
 )
 
-type RequestState int
+type OrderState int
 
 const (
-	None      RequestState = 0
-	Order     RequestState = 1
-	Confirmed RequestState = 2
-	Complete  RequestState = 3
+	Ordr_None 		OrderState = 0
+	Ordr_Unconfirmed    OrderState = 1
+	Ordr_Confirmed 		OrderState = 2
+	
+	Ordr_Unknown   		OrderState = 4
 )
 
 type ElevatorBehaviour int
@@ -34,7 +35,7 @@ type Elevator struct {
 	Dirn        elevio.MotorDirection
 	LocalOrders [][]bool
 	// Map er egentlig litt lite effektivt da man ikke kan opdatere deler av verdien på en key, men heller må bare gi en helt ny verdi/struct.
-	// AssignedOrders   map[string][][]RequestState
+	// AssignedOrders   map[string][][]OrderState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
 	Id         string
@@ -47,7 +48,7 @@ type Elevator struct {
 
 type NetworkElevator struct {
 	Elevator       Elevator
-	AssignedOrders map[string][][]RequestState
+	AssignedOrders map[string][][]OrderState
 }
 
 type DirnBehaviourPair struct {

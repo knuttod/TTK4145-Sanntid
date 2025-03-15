@@ -29,7 +29,14 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 }
 
 
-
+// //For å passe på at man ikke endrer på slicen. Slices er tydelighvis by reference, forstår ikke helt, men er det som er feilen
+// copy := make([][]bool, len(Elevators[selfId].Elevator.LocalOrders))
+// for i := range copy {
+// 	copy[i] = append([]bool(nil), Elevators[selfId].Elevator.LocalOrders[i]...) // Ensure deep copy
+// }
+// temp := Elevators[selfId]
+// temp.Elevator.LocalOrders = copy
+// Elevators[selfId] = temp
 
 func assignOrder(AssignedOrders *map[string][][]elevator.RequestState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, order elevio.ButtonEvent) {
 	

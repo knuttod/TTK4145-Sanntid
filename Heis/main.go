@@ -75,8 +75,8 @@ func main() {
 	peerTxEnable := make(chan bool)
 
 	localAssignedOrderCH := make(chan elevio.ButtonEvent) //might need buffer
-	buttonPressCH := make(chan msgTypes.FsmMsg) //might need buffer
-	completedOrderCh := make(chan msgTypes.FsmMsg)
+	buttonPressCH := make(chan elevio.ButtonEvent) //might need buffer
+	completedOrderCh := make(chan elevio.ButtonEvent)
 
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)

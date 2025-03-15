@@ -28,22 +28,22 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
+	//Make sure info is loaded before sending
 	networkElevator := <- ordersToPeersCH
 
 	enable := true
+	send := true
 	for {
 		select {
 		case enable = <-transmitEnable:
+			send = true
 		case <-time.After(interval):
+			send = true
+		case networkElevator = <- ordersToPeersCH:
+			send = false
 		}
 
-		if enable {
-			//update information of this elevator if available
-			select {
-			case networkElevator = <- ordersToPeersCH:
-			default:
-				//just to make the select non blocking
-			}
+		if enable && send{
 			// Create elevator state message
 			elevatorStateMsg := msgTypes.ElevatorStateMsg{
 				NetworkElevator: networkElevator,

@@ -3,7 +3,6 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/msgTypes"
 	"fmt"
 	//"fmt"
 )
@@ -128,66 +127,48 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevio.
 
 
 // Clears at current floor and sends that the order is complete to the order module.
-func ClearAtCurrentFloor(e elevator.Elevator, completedOrderCH chan msgTypes.FsmMsg) elevator.Elevator {
+func ClearAtCurrentFloor(e elevator.Elevator, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
 	switch e.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := 0; btn < N_buttons; btn++ {
 			e.LocalOrders[e.Floor][btn] = false
-			completedOrderCH <- msgTypes.FsmMsg{
-				Elevator: e,
-				Event: elevio.ButtonEvent {
+			completedOrderCH <- elevio.ButtonEvent{
 					Floor: e.Floor,
 					Button: elevio.ButtonType(btn),
-				},
 			}
 		}
 	case elevator.CV_InDirn:
 		e.LocalOrders[e.Floor][elevio.BT_Cab] = false
-		completedOrderCH <- msgTypes.FsmMsg{
-			Elevator: e,
-			Event: elevio.ButtonEvent {
+		completedOrderCH <- elevio.ButtonEvent{
 				Floor: e.Floor,
 				Button: elevio.BT_Cab,
-			},
 		}
 		switch e.Dirn {
 		case elevio.MD_Up:
 			if (!Above(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallUp] == false) {
 				e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
-				completedOrderCH <- msgTypes.FsmMsg{
-					Elevator: e,
-					Event: elevio.ButtonEvent {
+				completedOrderCH <- elevio.ButtonEvent{
 						Floor: e.Floor,
 						Button: elevio.BT_HallDown,
-					},
 				}
 			}
 			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
-			completedOrderCH <- msgTypes.FsmMsg{
-				Elevator: e,
-				Event: elevio.ButtonEvent {
+			completedOrderCH <- elevio.ButtonEvent{
 					Floor: e.Floor,
 					Button: elevio.BT_HallUp,
-				},
 			}
 
 		case elevio.MD_Down:
 			if (!Below(e)) && (e.LocalOrders[e.Floor][elevio.BT_HallDown] == false) {
 				e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
-				completedOrderCH <- msgTypes.FsmMsg{
-					Elevator: e,
-					Event: elevio.ButtonEvent {
+				completedOrderCH <- elevio.ButtonEvent{
 						Floor: e.Floor,
 						Button: elevio.BT_HallUp,
-					},
 				}
 			}
-			completedOrderCH <- msgTypes.FsmMsg{
-				Elevator: e,
-				Event: elevio.ButtonEvent {
+			completedOrderCH <- elevio.ButtonEvent{
 					Floor: e.Floor,
 					Button: elevio.BT_HallDown,
-				},
 			}
 		// case elevio.MD_Stop:
 		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
@@ -196,19 +177,13 @@ func ClearAtCurrentFloor(e elevator.Elevator, completedOrderCH chan msgTypes.Fsm
 		default:
 			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
 			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
-			completedOrderCH <- msgTypes.FsmMsg{
-				Elevator: e,
-				Event: elevio.ButtonEvent {
+			completedOrderCH <- elevio.ButtonEvent{
 					Floor: e.Floor,
 					Button: elevio.BT_HallDown,
-				},
 			}
-			completedOrderCH <- msgTypes.FsmMsg{
-				Elevator: e,
-				Event: elevio.ButtonEvent {
+			completedOrderCH <- elevio.ButtonEvent{
 					Floor: e.Floor,
 					Button: elevio.BT_HallUp,
-				},
 			}
 		}
 	default:
