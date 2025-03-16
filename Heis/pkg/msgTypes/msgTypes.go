@@ -14,7 +14,7 @@ type UdpMsg struct {
 
 
 type ElevatorStateMsg struct {
-	Message        string
+	// Message        string
 	Iter           int
 	NetworkElevator elevator.NetworkElevator
 	Id       string

@@ -3,6 +3,7 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"Heis/pkg/deepcopy"
 	"fmt"
 	// "fmt"
 )
@@ -29,12 +30,16 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 		(*elev).Floor = floor
 	}
 
-	fmt.Println((*elev).Floor)
+	fmt.Println("startFloor: ",(*elev).Floor)
 
 	fsmToOrdersCH <- *elev
 
 	for {
-		
+		select {
+		// case fsmToOrdersCH <- *elev:
+		case fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(*elev):
+		default:
+		}
 
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
@@ -69,10 +74,7 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 			//non blocking
 		}
 
-		select {
-		case fsmToOrdersCH <- *elev:
-		default:
-		}
+		
 
 	}
 }

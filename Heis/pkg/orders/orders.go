@@ -5,7 +5,8 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
-	"Heis/pkg/timer"
+	// "Heis/pkg/timer"
+	"Heis/pkg/deepcopy"
 	"fmt"
 )
 
@@ -37,10 +38,10 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 	var activeElevators []string
 
 	
-	resetTimer := make(chan float64)
-	timerTimeOut := make(chan bool)
-	timeOutTime := 10.0
-	go timer.Timer(resetTimer, timerTimeOut)
+	// resetTimer := make(chan float64)
+	// timerTimeOut := make(chan bool)
+	// timeOutTime := 10.0
+	// go timer.Timer(resetTimer, timerTimeOut)
 	//Lage en watchdog funksjon som gjør noe dersom timeren utløper
 	// sette opp en timer som må kontinuerlig resettes, dersom den ikke gjør det send på en channel her som da gjør et eller annet, f.eks resetter programmet
 	// dette kan brukes for å sjekke for motorstopp?
@@ -49,13 +50,20 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 	// denne blir stuck noen ganger, vet ikke helt hvorfor??
 	for {
+		// ordersToPeersCH <- Elevators[selfId]
+		ordersToPeersCH <- deepcopy.DeepCopyNettworkElevator(Elevators[selfId])
 		
 		select {
 		case elev := <- fsmToOrdersCH:
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
+		default:
+			//non blocking
+		}
+		// fmt.Println("tic")
+		select {
 		case btn_input := <- buttonPressCH:
-			// fmt.Println("assign")
-			assignOrder(assignedOrders, Elevators, activeElevators, selfId, btn_input) //denne endrer på localOrders mapet. Ikke riktig
+			fmt.Println("assign")
+			assignOrder(assignedOrders, deepcopy.DeepCopyElevatorsMap(Elevators), activeElevators, selfId, btn_input)
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			
 			//starte timer for å sjekke tid
@@ -64,27 +72,25 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		//denne trenger kun å si ifra at den er ferdig for timer
 		case completed_order := <- completedOrderCH:
 
-			// fmt.Println("done")
+			fmt.Println("done")
 
-			setOrder(assignedOrders, selfId, completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
-			Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
+			if (*assignedOrders)[selfId][completed_order.Floor][int(completed_order.Button)] == elevator.Ordr_Confirmed {
+				setOrder(assignedOrders, selfId, completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
+				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
+			}
 
 			// //si til timer at den ble fullført innen tiden
-			resetTimer <- timeOutTime
+			// resetTimer <- timeOutTime
 		
 		case remoteElevatorState := <-remoteElevatorCh:
 			if remoteElevatorState.Id != selfId {
-				// fmt.Println("External update")
 				updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
 				if assignedOrdersKeysCheck(Elevators, activeElevators){
 					orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 				}
-				// fmt.Println("Local: ", (*assignedOrders))
-				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
-				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				
-				resetTimer <- timeOutTime
+				// resetTimer <- timeOutTime
 			}
 
 		case p := <- peerUpdateCh:
@@ -137,21 +143,25 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 			// resetTimer <- timeOutTime
 
-		case <- timerTimeOut:
+		// case <- timerTimeOut:
 			// fmt.Println("Timer timed out")
 		// default:
 			//to not stall
 		}
 
-		
+
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
-				fmt.Println("Local: ", (*assignedOrders))
+				// for id, elev := range Elevators {
+				// 	fmt.Println(id, ":", elev.AssignedOrders)
+				// }
+				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
-				fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
+				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				if len(activeElevators) == 1 {
+					// fmt.Println("Hei")
 					clearOrder(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn)
 				}
 				if assignedOrdersKeysCheck(Elevators, activeElevators){
@@ -165,7 +175,6 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		//litt buggy på macsimmen, kanskje bedre andre steder?
 		// setAllHallLightsfromRemote(*remoteElevators, activeElevators, (*e).Id)
 
-		ordersToPeersCH <- Elevators[selfId]
 	}
 }
 

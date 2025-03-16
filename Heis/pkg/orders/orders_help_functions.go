@@ -24,7 +24,6 @@ func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
 		}
 	}
 	assignedOrders[id] = Orders
-	fmt.Println("her")
 
 	return assignedOrders
 }
@@ -33,6 +32,7 @@ func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
 func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, remoteId string) {
 	var currentState elevator.OrderState
 	var updateState elevator.OrderState
+
 
 	for _, id := range activeElevators {
 		for floor := range N_floors {
@@ -138,17 +138,15 @@ func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, acti
 	var assignedOrdersKeys []string
 	sort.Strings(activeElevators)
 
-	for _, elev := range activeElevators {
-		if len(activeElevators) > len(Elevators[elev].AssignedOrders) {
+	for _, elev := range Elevators {
+		if len(activeElevators) > len(elev.AssignedOrders) {
 			return false
 		}
 		assignedOrdersKeys = []string{}
-		for k, _ := range Elevators[elev].AssignedOrders {
+		for k, _ := range elev.AssignedOrders {
 			assignedOrdersKeys = append(assignedOrdersKeys, k)
 		}
 		sort.Strings(assignedOrdersKeys)
-		// fmt.Println("local keys", assignedOrdersKeys)
-		// fmt.Println("External keys", activeElevators)
 
 		if !reflect.DeepEqual(activeElevators, assignedOrdersKeys[:len(activeElevators)]) {
 			return false
@@ -157,10 +155,24 @@ func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, acti
 	return true
 }
 
+//Variant without referance
 func setOrder(orderMap *map[string][][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) {
 	temp := (*orderMap)[elevId]
 	temp[floor][btn] = state
 	(*orderMap)[elevId] = temp
 }
 
-// func changeElevatorMap
+//Variant with shallow copy
+// func setOrder(assignedOrders [][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) [][]elevator.OrderState{
+// 	assignedOrders[floor][btn] = state
+// 	return assignedOrders
+// }
+
+//Variant with deepCopy
+// func setOrder(assignedOrders [][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) [][]elevator.OrderState{
+// 	copy := deepCopy2DSlice(assignedOrders)
+// 	copy[floor][btn] = state
+// 	return copy
+// }
+
+
