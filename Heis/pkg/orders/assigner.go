@@ -3,23 +3,27 @@ package orders
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"fmt"
 	// "fmt"
 	//"strconv"
 )
 
-func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrders map[string][][]elevator.OrderState, reassignOrderCH chan elevio.ButtonEvent) {
+func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrders *map[string][][]elevator.OrderState, activeElevators []string, selfId string) {
 	
 	for _, elev := range elevators {
 		if elev.Elevator.Behaviour == elevator.EB_Unavailable {
-			orders := assignedOrders[elev.Elevator.Id]
-			for floor := range orders{
-				for button := 0; button < 2; button++ {
-					if orders[floor][button] == elevator.Ordr_Unconfirmed || 
-					orders[floor][button] == elevator.Ordr_Confirmed {
-						reassignOrderCH <- elevio.ButtonEvent{
-							Floor:  floor,
-							Button: elevio.ButtonType(button),
+			orders := (*assignedOrders)[elev.Elevator.Id]
+			for floor := range N_floors{
+				for btn := 0; btn < 2; btn++ {
+					if orders[floor][btn] == elevator.Ordr_Unconfirmed || 
+					orders[floor][btn] == elevator.Ordr_Confirmed {
+						order := elevio.ButtonEvent{
+							Floor: floor,
+							Button: elevio.ButtonType(btn),
 						}
+						fmt.Println("reassign")
+						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
+						setOrder(assignedOrders, elev.Elevator.Id, floor, btn, elevator.Ordr_None)
 					}
 				}
 			}

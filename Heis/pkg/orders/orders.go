@@ -104,27 +104,28 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			// kjøre reassign orders på heisene som ligger i lost. 
 			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
 
-
+			fmt.Println("len", len(p.Lost))
 			if len(p.Lost) > 0 {
 				for _, elev := range p.Lost {
 					temp := Elevators[elev]
 					temp.Elevator.Behaviour = elevator.EB_Unavailable
 					Elevators[elev] = temp
 				}
+				fmt.Println("lost")
 
 				//alt dette bør bli en funksjon og ikke kjøres her
-				// reassignOrders(Elevators, *assignedOrders, reassignOrderCH)
-				for _, elev := range p.Lost {
-					temp := Elevators[elev]
-					tempOrders := temp.AssignedOrders
-					for floor := range N_floors {
-						for btn := range N_buttons -1 {
-							setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_None)
-							temp.AssignedOrders = tempOrders
-							Elevators[elev] = temp
-						}
-					}
-				}
+				reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), assignedOrders, activeElevators, selfId)
+				// for _, elev := range p.Lost {
+				// 	temp := Elevators[elev]
+				// 	tempOrders := temp.AssignedOrders
+				// 	for floor := range N_floors {
+				// 		for btn := range N_buttons -1 {
+				// 			setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_None)
+				// 			temp.AssignedOrders = tempOrders
+				// 			Elevators[elev] = temp
+				// 		}
+				// 	}
+				// }
 			}
 
 			//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
@@ -153,19 +154,20 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			//to not stall
 		}
 
+		//trenger å kjøre denne her for motorstopp senere
+		// reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), assignedOrders, activeElevators, selfId)
 
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
-				fmt.Println("Active: ", activeElevators)
-				for _, elev := range activeElevators {
-					fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-				}
+				// fmt.Println("Active: ", activeElevators)
+				// for _, elev := range activeElevators {
+				// 	fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+				// }
 				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
 				if len(activeElevators) == 1 {
-					// fmt.Println("Hei")
 					clearOrder(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn)
 				}
 				if assignedOrdersKeysCheck(Elevators, activeElevators){

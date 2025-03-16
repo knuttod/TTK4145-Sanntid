@@ -6,12 +6,8 @@ import (
 	"Heis/pkg/msgTypes"
 	// "Heis/pkg/deepcopy"
 	"fmt"
-
-	// "fmt"
-
-	// "fmt"
-	"reflect"
-	"sort"
+	// "reflect"
+	// "sort"
 )
 
 func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
@@ -33,8 +29,6 @@ func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
 func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, remoteId string) {
 	var currentState elevator.OrderState
 	var updateState elevator.OrderState
-
-	// fmt.Println("active", activeElevators)
 
 
 	for _, id := range activeElevators {
@@ -84,51 +78,6 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 						setOrder(AssignedOrders, id, floor, btn, updateState)
 					}
 				}
-
-				// switch updateState {
-				// case elevator.Ordr_None:
-				// 	switch currentState {
-				// 	case elevator.Ordr_Unknown:
-				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_None)
-				// 	}
-
-				// case elevator.Ordr_Unconfirmed:
-				// 	switch currentState {
-				// 	case elevator.Ordr_Unknown:
-				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
-				// 	case elevator.Ordr_None:
-				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
-				// 	}
-
-				// case elevator.Ordr_Confirmed:
-				// 	switch currentState {
-				// 	case elevator.Ordr_Unknown:
-				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
-				// 	case elevator.Ordr_None:
-				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
-				// 	case elevator.Ordr_Unconfirmed:
-				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
-				// 	}
-
-				// case elevator.Ordr_Complete:
-				// 	// switch currentState {
-				// 	// case elevator.Ordr_Unknown:
-				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
-				// 	// case elevator.Ordr_None:
-				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
-				// 	// case elevator.Ordr_Unconfirmed:
-				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
-				// 	// case elevator.Ordr_Confirmed:
-				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
-				// 	// case elevator.Ordr_Complete:
-				// 	// 	//both top of cyclic counter, check for reset
-				// 	// }
-				// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
-				// 	//check if all nodes are at top, in that case reset
-				// 	clearOrder(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
-
-
-				// }
 			}
 		}
 	}
@@ -199,21 +148,26 @@ func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState
 // Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork
 func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, activeElevators []string) bool {
 
-	var assignedOrdersKeys []string
-	sort.Strings(activeElevators)
+	if len(activeElevators) == 1 {
+		return true
+	}
 
-	for _, elev := range Elevators {
+	var assignedOrdersKeys map[string]bool
+	// for _, elev := range Elevators {
+	for _, id := range activeElevators {
+		elev := Elevators[id]
 		if len(activeElevators) > len(elev.AssignedOrders) {
 			return false
 		}
-		assignedOrdersKeys = []string{}
-		for k, _ := range elev.AssignedOrders {
-			assignedOrdersKeys = append(assignedOrdersKeys, k)
+		assignedOrdersKeys = make(map[string]bool)
+		for id, _ := range elev.AssignedOrders {
+			assignedOrdersKeys[id] = true
 		}
-		sort.Strings(assignedOrdersKeys)
 
-		if !reflect.DeepEqual(activeElevators, assignedOrdersKeys[:len(activeElevators)]) {
-			return false
+		for _, elev := range activeElevators {
+			if !assignedOrdersKeys[elev] {
+				return false
+			}
 		}
 	}
 	return true
