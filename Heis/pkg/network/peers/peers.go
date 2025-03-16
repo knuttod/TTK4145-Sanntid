@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/conn"
+
 	// "Heis/pkg/orders"
 	"encoding/json"
 	"fmt"
@@ -18,13 +19,11 @@ type PeerUpdate struct {
 	Lost  []string
 }
 
-//Får en delay i meldingene. Den som sender motar sin egen melding en del før den som ikke sender
+// Får en delay i meldingene. Den som sender motar sin egen melding en del før den som ikke sender
 // er dette problem med udp?
-// const interval = 15 * time.Millisecond
-const interval = 220 * time.Millisecond
+const interval = 15 * time.Millisecond
+// const interval = 220 * time.Millisecond
 const timeout = 500 * time.Millisecond
-
-
 
 // Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
 // func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
@@ -72,59 +71,58 @@ const timeout = 500 * time.Millisecond
 // }
 
 func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
-    conn := conn.DialBroadcastUDP(port)
-    addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
+	conn := conn.DialBroadcastUDP(port)
+	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
-    // Make sure info is loaded before sending
-    networkElevator := <-ordersToPeersCH
+	// Make sure info is loaded before sending
+	networkElevator := <-ordersToPeersCH
 
-    fmt.Println("start sending")
+	fmt.Println("start sending")
 	iter := 0
 
-    enable := true
-    for {
-        select {
-        case enable = <-transmitEnable:
-            // Update the enable flag
-        case <-time.After(interval):
-            // Non-blocking check for updates on ordersToPeersCH
-            select {
-            case networkElevator = <-ordersToPeersCH:
-                // Update the networkElevator data
-            default:
-                // No update available, proceed with sending
-            }
+	enable := true
+	for {
+		select {
+		case enable = <-transmitEnable:
+			// Update the enable flag
+		case <-time.After(interval):
+			// Non-blocking check for updates on ordersToPeersCH
+			select {
+			case networkElevator = <-ordersToPeersCH:
+				// Update the networkElevator data
+			default:
+				// No update available, proceed with sending
+			}
 
 			// fmt.Println("send")
 
-            if enable {
+			if enable {
 				iter++
-                // Create elevator state message
-                elevatorStateMsg := msgTypes.ElevatorStateMsg{
-                    NetworkElevator: networkElevator,
-                    Id:              id,
-					Iter: iter,
-                }
+				// Create elevator state message
+				elevatorStateMsg := msgTypes.ElevatorStateMsg{
+					NetworkElevator: networkElevator,
+					Id:              id,
+					Iter:            iter,
+				}
 
-                // Convert to JSON
-                data, err := json.Marshal(elevatorStateMsg)
-                if err != nil {
-                    fmt.Println("send error:", err)
-                    continue
-                }
+				// Convert to JSON
+				data, err := json.Marshal(elevatorStateMsg)
+				if err != nil {
+					fmt.Println("send error:", err)
+					continue
+				}
 
-                // Send data
-                _, err = conn.WriteTo(data, addr)
-                if err != nil {
-                    fmt.Println("Send error:", err)
-                    continue
-                }
-                // fmt.Println("Data sent successfully")
-            }
-        }
-    }
+				// Send data
+				_, err = conn.WriteTo(data, addr)
+				if err != nil {
+					fmt.Println("Send error:", err)
+					continue
+				}
+				// fmt.Println("Data sent successfully")
+			}
+		}
+	}
 }
-
 
 // // Keeps track of the conected elevators, and sends the elevatorstates on the elevatorStateCh to the order module, the ids are sent to main on the peerUpdate channel.
 // func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
@@ -149,7 +147,6 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 
 // 		id := msg.Id // Extract peer ID
 
-		
 // 		// Track peer presence
 // 		p.New = ""
 // 		if id != "" {
@@ -173,20 +170,20 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 // 		// Send peer update only if there was a change
 // 		if updated {
 // 			p.Peers = make([]string, 0, len(lastSeen))
-			
+
 // 			for k := range lastSeen {
 // 				p.Peers = append(p.Peers, k)
 // 			}
-			
+
 // 			sort.Strings(p.Peers)
 // 			sort.Strings(p.Lost)
 // 			fmt.Println("beg")
 // 			peerUpdateCh <- p
 // 			fmt.Println("late")
-			
+
 // 			fmt.Println("Connected peers:", p.Peers)
 // 		}
-		
+
 // 		// Forward the full elevator state to order module
 // 		elevatorStateCh <- msg
 // 	}
@@ -199,6 +196,10 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 
 	conn := conn.DialBroadcastUDP(port)
 
+	//temp
+	updateFlag := false
+	var updatePeers PeerUpdate
+
 	for {
 		updated := false
 
@@ -210,16 +211,15 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 		var msg msgTypes.ElevatorStateMsg
 		err := json.Unmarshal(buf[:n], &msg)
 		if err != nil {
-			fmt.Println("err")
+			// fmt.Println("err")
 			continue // Ignore invalid messages
 		}
 
 		// duration := time.Since(startTime) // Calculate duration
-        // fmt.Printf("json.Unmarshal took %s\n", duration)
+		// fmt.Printf("json.Unmarshal took %s\n", duration)
 
 		id := msg.Id // Extract peer ID
 
-		
 		// Track peer presence
 		p.New = ""
 		if id != "" {
@@ -229,7 +229,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 			}
 			lastSeen[id] = time.Now()
 		}
-		
+
 		// Removing dead connections
 		p.Lost = make([]string, 0)
 		for k, v := range lastSeen {
@@ -239,30 +239,69 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 				delete(lastSeen, k)
 			}
 		}
-		
+
 		// Send peer update only if there was a change
+		// if updated {
+		// 	p.Peers = make([]string, 0, len(lastSeen))
+
+		// 	for k := range lastSeen {
+		// 		p.Peers = append(p.Peers, k)
+		// 	}
+
+		// 	sort.Strings(p.Peers)
+		// 	sort.Strings(p.Lost)
+
+		// 	select {
+		// 	case peerUpdateCh <- p:
+		// 		// Successfully sent to channel
+		// 	default:
+		// 		// Channel is full, skipping send
+		// 		fmt.Println("peerUpdateCh channel is full, skipping send")
+		// 	}
+
+		// 	fmt.Println("Connected peers:", p.Peers)
+		// }
+
 		if updated {
 			p.Peers = make([]string, 0, len(lastSeen))
-			
+
 			for k := range lastSeen {
 				p.Peers = append(p.Peers, k)
 			}
-			
+
 			sort.Strings(p.Peers)
 			sort.Strings(p.Lost)
+
+			updatePeers = p
+			updateFlag = true
+		}
+
+		if updateFlag {
+
+			select {
+			case peerUpdateCh <- updatePeers:
+				// Successfully sent to channel
+				fmt.Println("Connected peers:", updatePeers.Peers)
+				updateFlag = false
+			default:
+				// Channel is full, skipping send
+				// fmt.Println("peerUpdateCh channel is full, skipping send")
+			}
+
 			
-			peerUpdateCh <- p
-			
-			fmt.Println("Connected peers:", p.Peers)
 		}
 
 		// Forward the full elevator state to order module
-		// fmt.Println("msg", msg.NetworkElevator.AssignedOrders)
-		fmt.Println("Id:", id, "Iter:", msg.Iter)
-		elevatorStateCh <- msg
+		select {
+		case elevatorStateCh <- msg:
+			// Successfully sent to channel
+		default:
+			// Channel is full, skipping send
+			// fmt.Println("elevatorStateCh channel is full, skipping send")
+		}
+		// fmt.Println("Id:", msg.Id, "Iter:", msg.Iter)
 	}
 }
-
 
 // func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
 //     var buf [1024]byte

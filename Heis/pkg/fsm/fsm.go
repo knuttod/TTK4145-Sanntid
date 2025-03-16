@@ -70,7 +70,7 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 				// fmt.Println("drv_doortimer timed out")
 				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
 			}
-		default:
+		// default:
 			//non blocking
 		}
 

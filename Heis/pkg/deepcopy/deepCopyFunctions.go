@@ -6,7 +6,7 @@ import (
 )
 
 
-func deepCopy2DSlice[T any](m [][]T) [][]T {
+func DeepCopy2DSlice[T any](m [][]T) [][]T {
 	if m == nil {
 		fmt.Println("nil")
 		return nil
@@ -19,25 +19,25 @@ func deepCopy2DSlice[T any](m [][]T) [][]T {
 }
 
 //Since assignedOrders is a map of 2d slice we need to be able to deep copy it to send it between modules
-func deepCopyAssignedOrders(assignedOrders map[string][][]elevator.OrderState) map[string][][]elevator.OrderState {
+func DeepCopyAssignedOrders(assignedOrders map[string][][]elevator.OrderState) map[string][][]elevator.OrderState {
 	deepCopy := make(map[string][][]elevator.OrderState)
 
 	for id, val := range assignedOrders {
-		deepCopy[id] = deepCopy2DSlice(val)
+		deepCopy[id] = DeepCopy2DSlice(val)
 	}
 	return deepCopy
 }
 
 //Local orders field is a 2d slice, need to deepCopy this
 func DeepCopyElevatorStruct(elev elevator.Elevator) elevator.Elevator {
-	elev.LocalOrders = deepCopy2DSlice(elev.LocalOrders)
+	elev.LocalOrders = DeepCopy2DSlice(elev.LocalOrders)
 	return elev
 }
 
 func DeepCopyNettworkElevator(elev elevator.NetworkElevator)  elevator.NetworkElevator {
 	deepCopy := elevator.NetworkElevator{
 		Elevator: DeepCopyElevatorStruct(elev.Elevator),
-		AssignedOrders: deepCopyAssignedOrders(elev.AssignedOrders),
+		AssignedOrders: DeepCopyAssignedOrders(elev.AssignedOrders),
 	}
 
 	return deepCopy
@@ -50,7 +50,7 @@ func DeepCopyElevatorsMap(Elevators map[string] elevator.NetworkElevator) map[st
 	for key, elev := range Elevators {
 		deepCopy[key] = elevator.NetworkElevator{
 			Elevator: DeepCopyElevatorStruct(elev.Elevator),
-			AssignedOrders: deepCopyAssignedOrders(elev.AssignedOrders),
+			AssignedOrders: DeepCopyAssignedOrders(elev.AssignedOrders),
 		}
 	}
 	return deepCopy

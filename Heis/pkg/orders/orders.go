@@ -59,7 +59,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		default:
 			//non blocking
 		}
-		// fmt.Println("tic")
+
 		select {
 		case btn_input := <- buttonPressCH:
 			fmt.Println("assign")
@@ -84,8 +84,10 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		
 		case remoteElevatorState := <-remoteElevatorCh:
 			if remoteElevatorState.Id != selfId {
+				// fmt.Println("remote")
 				updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
 				if assignedOrdersKeysCheck(Elevators, activeElevators){
+					// fmt.Println("merge")
 					orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 				}
@@ -139,7 +141,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 						}
 					}
 				}
+				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
+	
 
 			// resetTimer <- timeOutTime
 
@@ -153,10 +157,10 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
-				// fmt.Println("Active: ", activeElevators)
-				// for id, elev := range Elevators {
-				// 	fmt.Println(id, ":", elev.AssignedOrders)
-				// }
+				fmt.Println("Active: ", activeElevators)
+				for _, elev := range activeElevators {
+					fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+				}
 				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)

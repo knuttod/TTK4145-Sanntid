@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
+	// "Heis/pkg/deepcopy"
 	"fmt"
 
 	// "fmt"
@@ -33,6 +34,8 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 	var currentState elevator.OrderState
 	var updateState elevator.OrderState
 
+	// fmt.Println("active", activeElevators)
+
 
 	for _, id := range activeElevators {
 		for floor := range N_floors {
@@ -44,37 +47,88 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 				case elevator.Ordr_None:
 					switch updateState {
 					case elevator.Ordr_Unconfirmed:
-						setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Unconfirmed)
+						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
 					case elevator.Ordr_Confirmed:
-						setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Confirmed)
-					case elevator.Ordr_Complete:
-						setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Complete)
+						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
+					//Not this case to prevent un resetting cyclic counter
+					// case elevator.Ordr_Complete:
+					// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
 					}
 
 				case elevator.Ordr_Unconfirmed:
 					switch updateState {
 					case elevator.Ordr_Confirmed:
-						setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Confirmed)
+						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
 					case elevator.Ordr_Complete:
-						setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Complete)
+						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
 					}
 
 				case elevator.Ordr_Confirmed:
 					switch updateState {
 					case elevator.Ordr_Complete:
-						setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Complete)
+						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
 					}
 
 				case elevator.Ordr_Complete:
-					//top of cyclic counter
-					clearOrder(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
+					//top of cyclic counter, reset if synced or already reset
+					switch updateState {
+					case elevator.Ordr_None:
+						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_None)
+					case elevator.Ordr_Complete:
+						clearOrder(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
+					}
 
 				case elevator.Ordr_Unknown:
 					//set to same state as remote
 					if updateState != elevator.Ordr_Unknown {
-						setOrder(AssignedOrders, selfId, floor, btn, updateState)
+						setOrder(AssignedOrders, id, floor, btn, updateState)
 					}
 				}
+
+				// switch updateState {
+				// case elevator.Ordr_None:
+				// 	switch currentState {
+				// 	case elevator.Ordr_Unknown:
+				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_None)
+				// 	}
+
+				// case elevator.Ordr_Unconfirmed:
+				// 	switch currentState {
+				// 	case elevator.Ordr_Unknown:
+				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
+				// 	case elevator.Ordr_None:
+				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
+				// 	}
+
+				// case elevator.Ordr_Confirmed:
+				// 	switch currentState {
+				// 	case elevator.Ordr_Unknown:
+				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
+				// 	case elevator.Ordr_None:
+				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
+				// 	case elevator.Ordr_Unconfirmed:
+				// 		setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
+				// 	}
+
+				// case elevator.Ordr_Complete:
+				// 	// switch currentState {
+				// 	// case elevator.Ordr_Unknown:
+				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
+				// 	// case elevator.Ordr_None:
+				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
+				// 	// case elevator.Ordr_Unconfirmed:
+				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
+				// 	// case elevator.Ordr_Confirmed:
+				// 	// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
+				// 	// case elevator.Ordr_Complete:
+				// 	// 	//both top of cyclic counter, check for reset
+				// 	// }
+				// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
+				// 	//check if all nodes are at top, in that case reset
+				// 	clearOrder(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
+
+
+				// }
 			}
 		}
 	}
@@ -97,16 +151,29 @@ func ordersSynced(AssignedOrders map[string][][]elevator.OrderState, Elevators m
 	return true
 }
 
-// Set order to confirmed and starts order if it is unconfirmed for all elevators
+// Should start order when elevators are synced and order is unconfirmed or confirmed and no order in elevators map
+func shouldStartLocalOrder(AssignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, floor, btn int) bool {
+	return ordersSynced(AssignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn) && (((AssignedOrders)[selfId][floor][btn] == elevator.Ordr_Unconfirmed) || (((AssignedOrders)[selfId][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn]))
+}
+
+// If FSM is ready, set order to confirmed and starts order if it should start
 func confirmAndStartOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int,
 	localAssignedOrder chan elevio.ButtonEvent) {
-	if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && ((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Unconfirmed) {
+	// if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Unconfirmed) || (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn])) {
+	if shouldStartLocalOrder(*AssignedOrders, Elevators, activeElevators, selfId, floor, btn) {	
 		fmt.Println("start")
-		localAssignedOrder <- elevio.ButtonEvent{
+		order := elevio.ButtonEvent{
 			Floor:  floor,
 			Button: elevio.ButtonType(btn),
 		}
-		setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Confirmed)
+		select {
+		case localAssignedOrder <- order:
+			setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Confirmed)
+		default:
+				//non blocking
+		}
+		
+		
 	}
 }
 
@@ -116,10 +183,7 @@ func clearOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators ma
 	}
 }
 
-// Should start order when elevators are synced and order is confirmed
-func shouldStartLocalOrder(AssignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, floor, btn int) bool {
-	return ordersSynced(AssignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn) && (AssignedOrders[selfId][floor][btn] == elevator.Ordr_Confirmed)
-}
+
 
 // Updates remoteElevator map and adds entries for remote Elevator in assignedOrders map for local elevator if they do not exist yet.
 func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, remoteElevatorState msgTypes.ElevatorStateMsg) {
@@ -155,7 +219,7 @@ func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, acti
 	return true
 }
 
-//Variant without referance
+// Variant with referance
 func setOrder(orderMap *map[string][][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) {
 	temp := (*orderMap)[elevId]
 	temp[floor][btn] = state
@@ -170,7 +234,7 @@ func setOrder(orderMap *map[string][][]elevator.OrderState, elevId string, floor
 
 //Variant with deepCopy
 // func setOrder(assignedOrders [][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) [][]elevator.OrderState{
-// 	copy := deepCopy2DSlice(assignedOrders)
+// 	copy := deepcopy.DeepCopy2DSlice(assignedOrders)
 // 	copy[floor][btn] = state
 // 	return copy
 // }
