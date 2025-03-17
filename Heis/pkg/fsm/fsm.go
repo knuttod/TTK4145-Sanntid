@@ -22,23 +22,21 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 	floor := elevio.GetFloor()
 	if floor == -1 {
 		initBetweenFloors(elev)
-		for (*elev).Floor == -1 {
-			current_floor := <-drv_floors
-			floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
-		} 
+		current_floor := <-drv_floors
+		floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
 	} else {
 		(*elev).Floor = floor
 	}
 
 	fmt.Println("startFloor: ",(*elev).Floor)
 
-	fsmToOrdersCH <- *elev
+	// fsmToOrdersCH <- *elev
 
 	for {
 		select {
 		// case fsmToOrdersCH <- *elev:
 		case fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(*elev):
-		default:
+		// default:
 		}
 
 		select {
