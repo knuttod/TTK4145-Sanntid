@@ -39,6 +39,7 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 
 				switch currentState {
 				case elevator.Ordr_None:
+					//bottom of cyclic counter
 					switch updateState {
 					case elevator.Ordr_Unconfirmed:
 						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
@@ -69,6 +70,7 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 					case elevator.Ordr_None:
 						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_None)
 					case elevator.Ordr_Complete:
+						//resets cyclic counter if all elevators have complete
 						clearOrder(AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn)
 					}
 

@@ -23,7 +23,7 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 						}
 						fmt.Println("reassign")
 						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
-						setOrder(assignedOrders, elev.Elevator.Id, floor, btn, elevator.Ordr_None)
+						setOrder(assignedOrders, elev.Elevator.Id, floor, btn, elevator.Ordr_Unknown)
 					}
 				}
 			}

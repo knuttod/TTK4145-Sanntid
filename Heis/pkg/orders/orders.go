@@ -72,6 +72,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		//denne trenger kun å si ifra at den er ferdig for timer
 		case completed_order := <- completedOrderCH:
 
+
 			fmt.Println("done")
 
 			if (*assignedOrders)[selfId][completed_order.Floor][int(completed_order.Button)] == elevator.Ordr_Confirmed {
@@ -115,17 +116,17 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 				//alt dette bør bli en funksjon og ikke kjøres her
 				reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), assignedOrders, activeElevators, selfId)
-				// for _, elev := range p.Lost {
-				// 	temp := Elevators[elev]
-				// 	tempOrders := temp.AssignedOrders
-				// 	for floor := range N_floors {
-				// 		for btn := range N_buttons -1 {
-				// 			setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_None)
-				// 			temp.AssignedOrders = tempOrders
-				// 			Elevators[elev] = temp
-				// 		}
-				// 	}
-				// }
+				for _, elev := range p.Lost {
+					temp := Elevators[elev]
+					tempOrders := temp.AssignedOrders
+					for floor := range N_floors {
+						for btn := range N_buttons -1 {
+							setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_Unknown)
+							temp.AssignedOrders = tempOrders
+							Elevators[elev] = temp
+						}
+					}
+				}
 			}
 
 			//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
