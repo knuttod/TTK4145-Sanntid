@@ -38,6 +38,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 	Elevators[e.Id] = elevator.NetworkElevator{Elevator: e, AssignedOrders: *assignedOrders}
 
 	var activeElevators []string
+	activeHallLights := initHallLights()
+
 
 	
 	// resetTimer := make(chan float64)
@@ -57,7 +59,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
 		case btn_input := <- buttonPressCH:
 			// fmt.Println("assign")
-			if assignedOrdersKeysCheck(Elevators, activeElevators){
+			if assignedOrdersKeysCheck(Elevators, activeElevators, selfId){
 				assignOrder(assignedOrders, deepcopy.DeepCopyElevatorsMap(Elevators), activeElevators, selfId, btn_input)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
@@ -79,7 +81,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			if remoteElevatorState.Id != selfId {
 				// fmt.Println("remote")
 				updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
-				if assignedOrdersKeysCheck(Elevators, activeElevators){
+				if assignedOrdersKeysCheck(Elevators, activeElevators, selfId){
 					// fmt.Println("merge")
 					orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
@@ -88,7 +90,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		}
 
 		//kanskje kjøre reassign orders her
-		// if assignedOrdersKeysCheck(Elevators, activeElevators) {
+		// if assignedOrdersKeysCheck(Elevators, activeElevators, selfId) {
 		// 	reassignOrders(Elevators, assignedOrders, activeElevators, selfId)
 		// }
 
@@ -105,10 +107,14 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 				if len(activeElevators) == 1 {
 					clearOrder(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn)
 				}
-				if assignedOrdersKeysCheck(Elevators, activeElevators){
+				if assignedOrdersKeysCheck(Elevators, activeElevators, selfId){
 					confirmAndStartOrder(assignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn, localAssignedOrder)
 				}
 			}
+		}
+
+		if assignedOrdersKeysCheck(Elevators, activeElevators, selfId) {
+			activeHallLights = setHallLights(*assignedOrders, activeElevators, activeHallLights)
 		}
 		// duration := time.Since(start)
 		// fmt.Println("dur", duration)

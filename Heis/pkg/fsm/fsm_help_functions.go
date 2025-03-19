@@ -122,12 +122,13 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrde
 func setAllLights(e *elevator.Elevator) {
 	//set ligths
 	for floor := 0; floor < N_floors; floor++ {
-		for btn := 0; btn < N_buttons; btn++ {
+		// for btn := 0; btn < N_buttons; btn++ {
+		btn := 2
 			if e.LocalOrders[floor][btn] {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 			} else {
 				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 			}
-		}
+		// }
 	}
 }

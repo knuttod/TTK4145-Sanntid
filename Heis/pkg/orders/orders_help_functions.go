@@ -149,14 +149,17 @@ func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState
 }
 
 // Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork
-func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, activeElevators []string) bool {
+func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) bool {
 
 	if len(activeElevators) == 0 {
 		return false
 	}
 
 	if len(activeElevators) == 1 {
-		return true
+		if activeElevators[0] == selfId {
+			return true
+		}
+		return false
 	}
 
 	var assignedOrdersKeys map[string]bool
@@ -251,3 +254,36 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 				(*Elevators)[selfId] = elevator.NetworkElevator{Elevator: (*Elevators)[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
 }
+
+
+func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElevators []string, activeHallLights [][]bool) [][]bool {
+	for floor := range N_floors{
+		for btn := range (N_buttons - 1) {
+			setLight := false
+			for _, elev := range activeElevators {
+				if assignedOrders[elev][floor][btn] == elevator.Ordr_Confirmed {
+					setLight = true
+					break;
+				}
+			}
+			if setLight != activeHallLights[floor][btn] {
+				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, setLight)
+				activeHallLights[floor][btn] = setLight
+			}
+		}
+	}
+	return activeHallLights
+}
+
+func initHallLights() [][]bool{
+	activeHallLights := make([][]bool, N_floors)
+	for floor := range N_floors {
+		activeHallLights[floor] = make([]bool, N_buttons - 1)
+		for btn := range (N_buttons - 1) {
+			activeHallLights[floor][btn] = false
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
+		}
+	}
+	return activeHallLights
+}
+
