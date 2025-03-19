@@ -126,6 +126,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 					
 					// resetTimer <- timeOutTime
 				}
+			default:
+				//if no updates available skip to next iteration
+				continue
 			}
 
 		// default:
