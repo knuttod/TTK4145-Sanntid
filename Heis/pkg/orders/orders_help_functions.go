@@ -251,7 +251,7 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 
 
 func oneElevatorTic(activeElevators chan []string, tic chan bool) {
-	interval := 15 * time.Millisecond
+	interval := 1 * time.Millisecond
 	active := <- activeElevators
 	for {
 		select {
