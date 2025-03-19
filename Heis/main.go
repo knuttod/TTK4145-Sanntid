@@ -9,7 +9,6 @@ import (
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
-	"Heis/pkg/timer"
 
 	// "Heis/pkg/message"
 	"flag"
@@ -44,28 +43,14 @@ func main() {
 	}
 	// Use the loaded configuration
 	NumFloors := cfg.NumFloors
-	NumButtons := cfg.NumButtons
+	// NumButtons := cfg.NumButtons
 	//temp
-	NumElevators := 3
+	// NumElevators := 3
 
 
-	var e elevator.Elevator
-	elevator.Elevator_init(&e, NumFloors, NumButtons, NumElevators, id)
+	
 	elevio.Init("localhost:"+port, NumFloors)
 
-	var assignedOrders map[string][][]elevator.OrderState
-	assignedOrders = orders.AssignedOrdersInit(id)
-
-	drv_buttons := make(chan elevio.ButtonEvent)
-	drv_floors := make(chan int)
-	drv_obstr := make(chan bool)
-	drv_stop := make(chan bool)
-
-	drv_doorTimerStart := make(chan float64)
-	drv_doorTimerFinished := make(chan bool)
-
-	newNodeTx := make(chan msgTypes.ElevatorStateMsg)
-	newNodeRx := make(chan msgTypes.ElevatorStateMsg)
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
@@ -78,33 +63,12 @@ func main() {
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
 
-
-	go elevio.PollButtons(drv_buttons)
-	go elevio.PollFloorSensor(drv_floors)
-	go elevio.PollObstructionSwitch(drv_obstr)
-	go elevio.PollStopButton(drv_stop)
-
-	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
-
-
 	go peers.Transmitter(15647, id, peerTxEnable, ordersToPeersCH)
 	go peers.Receiver(15647, id, peerUpdateCh, remoteElevatorCh)
 	
-	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
+	go fsm.Fsm(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	
-	// go orders.OrderHandler(&e, &remoteElevators, localAssignedOrder, localRequest, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx)
-	go orders.OrderHandler(e, &assignedOrders, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, newNodeTx, newNodeRx, fsmToOrdersCH, ordersToPeersCH)
+	go orders.OrderHandler(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)
 
-
-	fmt.Println("Started")
-	// for {
-	// 	select {
-	// 	case p := <-peerUpdateCh:
-	// 		fmt.Printf("Peer update:\n")
-	// 		fmt.Printf("  Peers:    %q\n", p.Peers)
-	// 		fmt.Printf("  New:      %q\n", p.New)
-	// 		fmt.Printf("  Lost:     %q\n", p.Lost)
-	// 	}
-	// }
 	select{}
 }

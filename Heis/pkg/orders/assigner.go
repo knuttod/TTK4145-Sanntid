@@ -11,7 +11,7 @@ import (
 func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrders *map[string][][]elevator.OrderState, activeElevators []string, selfId string) {
 	
 	for _, elev := range elevators {
-		if elev.Elevator.Behaviour == elevator.EB_Unavailable {
+		if (elev.Elevator.Behaviour == elevator.EB_Unavailable) || (elev.Elevator.Obstructed == true) || (elev.Elevator.MotorStop){
 			orders := (*assignedOrders)[elev.Elevator.Id]
 			for floor := range N_floors{
 				for btn := 0; btn < 2; btn++ {
@@ -44,8 +44,8 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, order elevio.ButtonEvent) {
 	
 	
-	if len((*AssignedOrders)) < 2 || order.Button == elevio.BT_Cab {
-		if (((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_None) || ((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_Unknown)) && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, selfId, order.Floor, int(order.Button)){
+	if (len(activeElevators) < 2) || (order.Button == elevio.BT_Cab) {
+		if (((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_None) || ((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_Unknown) || (((*AssignedOrders)[selfId][order.Floor][order.Button] == elevator.Ordr_Confirmed))) && ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, selfId, order.Floor, int(order.Button)){
 			temp := (*AssignedOrders)[selfId]
 			temp[order.Floor][order.Button] = elevator.Ordr_Unconfirmed
 			(*AssignedOrders)[selfId] = temp
@@ -58,6 +58,9 @@ func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 	var minElev string
 	for _, elev := range activeElevators{
 		//temp
+		if (Elevators[elev].Elevator.Obstructed) || (Elevators[elev].Elevator.MotorStop) {
+			continue
+		}
 		if (*AssignedOrders)[elev][order.Floor][order.Button] == elevator.Ordr_Confirmed {
 			return
 		}

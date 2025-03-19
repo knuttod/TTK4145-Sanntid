@@ -3,6 +3,8 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
+	"fmt"
+	// "Heis/pkg/timer"
 	//"fmt"
 )
 
@@ -19,7 +21,7 @@ func initBetweenFloors(e *elevator.Elevator) {
 // (moving or opening doors). If the elevator is moving or has doors open, it updates
 // the request state accordingly. The function also manages the door timer, sends updated
 // elevator states over UDP, and updates the button lights.
-func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, completedOrderCH chan elevio.ButtonEvent) {
+func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
 
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:
@@ -52,6 +54,7 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 		case elevator.EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)
 			//clear something at this floor??
+			motorTimoutStartCh <- true
 
 		case elevator.EB_Idle:
 			//need something here?
@@ -63,10 +66,22 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 
 // When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
 // to stop. if it is supposed to stop it stops, clears the floor then opens the door.
-func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64, completedOrderCH chan elevio.ButtonEvent) {
+func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
 
 	(*e).Floor = newFloor
 	elevio.SetFloorIndicator((*e).Floor)
+
+	if !(*e).MotorStop {
+		select {
+		case <- floorArrivalCh:
+		default:
+		}
+		
+	}
+	if (*e).MotorStop {
+		fmt.Println("power back")
+		(*e).MotorStop = false
+	}
 
 	switch (*e).Behaviour {
 	case elevator.EB_Moving:
@@ -78,6 +93,8 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 			//drv_doorTimer <- 0.0
 			setCabLights(e)
 			(*e).Behaviour = elevator.EB_DoorOpen
+		} else {
+			motorTimoutStartCh <- true
 		}
 	}
 }
@@ -87,7 +104,7 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 // runned twice, once at the begining of the timer initialisation and
 // once when the door is supposed to close to check if the obstruction
 // is active.
-func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrderCH chan elevio.ButtonEvent) {
+func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
 
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:
@@ -106,6 +123,7 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrde
 		case elevator.EB_Moving:
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection((*e).Dirn)
+			motorTimoutStartCh <- true
 		//
 
 		case elevator.EB_Idle:
@@ -131,4 +149,13 @@ func setCabLights(e *elevator.Elevator) {
 		}
 		// }
 	}
+}
+
+func clearLocalOrders(e elevator.Elevator) elevator.Elevator {
+	for floor := range N_floors {
+		for btn := range N_buttons {
+			e.LocalOrders[floor][btn] = false
+		}
+	}
+	return e
 }

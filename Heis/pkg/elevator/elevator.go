@@ -34,13 +34,12 @@ const (
 type Elevator struct {
 	Floor       int
 	Dirn        elevio.MotorDirection
-	LocalOrders [][]bool
-	// Map er egentlig litt lite effektivt da man ikke kan opdatere deler av verdien på en key, men heller må bare gi en helt ny verdi/struct.
-	// AssignedOrders   map[string][][]OrderState
 	Behaviour  ElevatorBehaviour
 	Obstructed bool
+	MotorStop bool
+	LocalOrders [][]bool
+	
 	Id         string
-
 	Config struct {
 		ClearRequestVariant ClearRequestVariant
 		DoorOpenDuration_s  float64
@@ -58,17 +57,27 @@ type DirnBehaviourPair struct {
 }
 
 // Initializes an elevator struct. All orders are by default set to 0/false
-func Elevator_init(e *Elevator, N_floors, N_buttons, N_elevators int, id string) {
+func Elevator_init(N_floors, N_buttons int, id string) Elevator{
 	// initialize the (*e) struct
-	(*e).Floor = -1
-	(*e).Dirn = elevio.MD_Stop
-	(*e).Behaviour = EB_Idle
-	(*e).Config.ClearRequestVariant = CV_InDirn
-	(*e).Config.DoorOpenDuration_s = 3.0
-	(*e).Id = id
+	var elev Elevator
+	elev.Floor = -1
+	elev.Dirn = elevio.MD_Stop
+	elev.Behaviour = EB_Idle
+	elev.Obstructed = false
+	elev.MotorStop = false
 
-	(*e).LocalOrders = make([][]bool, N_floors)
-	for i := range (*e).LocalOrders {
-		(*e).LocalOrders[i] = make([]bool, N_buttons)
+	elev.LocalOrders = make([][]bool, N_floors)
+	for floor := range N_floors {
+		elev.LocalOrders[floor] = make([]bool, N_buttons)
+		for btn := range N_buttons {
+			elev.LocalOrders[floor][btn] = false
+		}
 	}
+
+	elev.Id = id
+
+	elev.Config.ClearRequestVariant = CV_InDirn
+	elev.Config.DoorOpenDuration_s = 3.0
+
+	return elev
 }

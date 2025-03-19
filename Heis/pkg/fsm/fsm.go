@@ -1,10 +1,11 @@
 package fsm
 
 import (
+	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/deepcopy"
-	"fmt"
+	"Heis/pkg/timer"
+	// "fmt"
 	// "fmt"
 )
 
@@ -15,64 +16,89 @@ const N_buttons = 3
 
 // FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCH, localRequestCH and completedOrderCH. 
 // Also takes input from elevio on drv channels. Interacts with external timer on doorTimerStartCH and doorTimerFinishedCH
-func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr,
-	drv_stop chan bool, doorTimerStartCH chan float64, doorTimerFinishedCH chan bool,
-	id string, localAssignedOrderCH chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan elevio.ButtonEvent, fsmToOrdersCH chan elevator.Elevator) {
+func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan elevio.ButtonEvent, fsmToOrdersCH chan elevator.Elevator) {
+
+	drvButtonsCh := make(chan elevio.ButtonEvent)
+	drvFloorsCh := make(chan int)
+	drvObstrCh := make(chan bool)
+	drvStopCh := make(chan bool)
+
+	doorTimerStartCh := make(chan float64)
+	doorTimerFinishedCh := make(chan bool)
+
+	floorArrivalCh := make(chan bool)
+	motorTimoutStartCh := make(chan bool, 5)
+	motorStopCh := make(chan bool)
+
+	go elevio.PollButtons(drvButtonsCh)
+	go elevio.PollFloorSensor(drvFloorsCh)
+	go elevio.PollObstructionSwitch(drvObstrCh)
+	go elevio.PollStopButton(drvStopCh) //kanskje implementere stop?
+	
+	//denne bør ha annet navn
+	go timer.Timer(doorTimerStartCh, doorTimerFinishedCh)
+
+	go timer.MotorStopTimer(floorArrivalCh, motorTimoutStartCh, motorStopCh)
+
+
+	elev := elevator.Elevator_init(N_floors, N_buttons, id)
 
 	floor := elevio.GetFloor()
 	if floor == -1 {
-		initBetweenFloors(elev)
-		current_floor := <-drv_floors
-		floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
+		initBetweenFloors(&elev)
+		current_floor := <-drvFloorsCh
+		floorArrival(&elev, current_floor, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 	} else {
-		(*elev).Floor = floor
+		elev.Floor = floor
 	}
 
-	fmt.Println("startFloor: ",(*elev).Floor)
-
-	// fsmToOrdersCH <- *elev
+	// fmt.Println("startFloor: ",elev.Floor)
+	
+	//trenger kanskje ikke denne
+	fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 
 	for {
-		select {
-		// case fsmToOrdersCH <- *elev:
-		case fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(*elev):
-		// default:
-		}
-
+		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
-		case button_input := <-drv_buttons:
+		case button_input := <-drvButtonsCh:
+			// fmt.Println("btn")
 			buttonPressCH <- button_input
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
-			requestButtonPress(elev, Order.Floor, Order.Button, doorTimerStartCH, completedOrderCH)
+			// fmt.Println("ordr press")
+			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 
-		case current_floor := <-drv_floors:
-			floorArrival(elev, current_floor, doorTimerStartCH, completedOrderCH)
-
-			// fmt.Printf("drv_floors: %v", current_floor)
-		case obstruction := <-drv_obstr:
+		case current_floor := <-drvFloorsCh:
+			floorArrival(&elev, current_floor, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
+			// fmt.Printf("drvFloorsCh: %v", current_floor)
+		case obstruction := <-drvObstrCh:
+			// fmt.Println("obstr")
 			if obstruction {
-				(*elev).Obstructed = true
+				//clear local orders
+
+				elev.Obstructed = true
+				elev = clearLocalOrders(elev)
+
 				// (*elev).Behaviour = elevator.EB_Unavailable
 			} else {
-				(*elev).Obstructed = false
+				elev.Obstructed = false
 				// (*elev).Behaviour = elevator.EB_DoorOpen
-				doorTimerStartCH <- (*elev).Config.DoorOpenDuration_s
+				doorTimerStartCh <- elev.Config.DoorOpenDuration_s
 			}
+		case <- motorStopCh:
+			// fmt.Println("motorstop")
+			elev.MotorStop = true
 
-		case <-doorTimerFinishedCH:
-			if !elev.Obstructed {
-				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
+		case <-doorTimerFinishedCh:
+			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {
+				DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 				// fmt.Println("drv_doortimer timed out")
-				DoorTimeout(elev, doorTimerStartCH, completedOrderCH)
+				DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 			}
 		// default:
 			//non blocking
 		}
-
-		
-
 	}
 }

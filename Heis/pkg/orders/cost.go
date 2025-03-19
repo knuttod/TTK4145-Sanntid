@@ -16,6 +16,10 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 		duration := 0
 		elev := e
 
+		if elev.Obstructed {
+			return 999
+		}
+
 		switch elev.Behaviour {
 		case elevator.EB_Idle:
 			pair := fsm.ChooseDirection(elev)
