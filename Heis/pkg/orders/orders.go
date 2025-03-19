@@ -39,11 +39,6 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 	var activeElevators []string
 
-	singleElevatorTic := make(chan bool, 1)
-	activeElevatorsCH := make(chan []string, 2) //buffer of 1 to prevent deadlock for two or more elevators
-
-	go oneElevatorTic(activeElevatorsCH, singleElevatorTic)
-
 	
 	// resetTimer := make(chan float64)
 	// timerTimeOut := make(chan bool)
@@ -77,7 +72,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		case p := <- peerUpdateCh:
 			peerUpdateHandler(assignedOrders, &Elevators, &activeElevators, selfId, p)
 			fmt.Println("bef")
-			activeElevatorsCH <- activeElevators 
+			// activeElevatorsCH <- activeElevators 
 			fmt.Println("tac")
 		case remoteElevatorState := <-remoteElevatorCh: //sender hele tiden
 			fmt.Println("msg")
@@ -90,12 +85,6 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 				}
 			}
-
-		case <- singleElevatorTic:
-			// To keep it working with only one elevator
-			// run a go routine which sends at a given rate if activeElevators have lenght 1
-			// not run it here but output comes here
-			
 		}
 
 		//kanskje kjøre reassign orders her

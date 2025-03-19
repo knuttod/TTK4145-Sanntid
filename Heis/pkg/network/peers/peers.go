@@ -142,7 +142,7 @@ func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorS
 		}
 
 		// Forward the full elevator state to order module
-		if msg.Id != selfId {
+		if (msg.Id != selfId) || (len(p.Peers) == 1) {
 			select {
 			case elevatorStateCh <- msg:
 				// Successfully sent to channel

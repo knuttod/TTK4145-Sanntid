@@ -7,7 +7,6 @@ import (
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
 	"fmt"
-	"time"
 	// "reflect"
 	// "sort"
 )
@@ -152,6 +151,10 @@ func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState
 // Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork
 func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, activeElevators []string) bool {
 
+	if len(activeElevators) == 0 {
+		return false
+	}
+
 	if len(activeElevators) == 1 {
 		return true
 	}
@@ -247,29 +250,4 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 				}
 				(*Elevators)[selfId] = elevator.NetworkElevator{Elevator: (*Elevators)[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
-}
-
-
-func oneElevatorTic(activeElevators chan []string, tic chan bool) {
-	interval := 1 * time.Millisecond
-	active := <- activeElevators
-	for {
-		select {
-		case active = <- activeElevators:
-		case <- time.After(interval):
-			if len(active) == 1 {
-				tic <- true
-			}
-		// default:
-			//continue if no update
-		}
-		// fmt.Println("asdf")
-		// fmt.Println(len(active))
-
-		// if len(active) == 1 {
-		// 	fmt.Println("er")
-		// 	<- time.After(interval)
-		// 	tic <- true
-		// }
-	}
 }
