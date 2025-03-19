@@ -62,7 +62,7 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
 		case completed_order := <- completedOrderCH:
-			// fmt.Println("done")
+			fmt.Println("done")
 			if (*assignedOrders)[selfId][completed_order.Floor][int(completed_order.Button)] == elevator.Ordr_Confirmed {
 				setOrder(assignedOrders, selfId, completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
@@ -75,9 +75,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			// activeElevatorsCH <- activeElevators 
 			fmt.Println("tac")
 		case remoteElevatorState := <-remoteElevatorCh: //sender hele tiden
-			fmt.Println("msg")
+			// fmt.Println("msg")
 			if remoteElevatorState.Id != selfId {
-				fmt.Println("remote")
+				// fmt.Println("remote")
 				updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
 				if assignedOrdersKeysCheck(Elevators, activeElevators){
 					// fmt.Println("merge")
@@ -88,14 +88,17 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		}
 
 		//kanskje kjøre reassign orders her
+		// if assignedOrdersKeysCheck(Elevators, activeElevators) {
+		// 	reassignOrders(Elevators, assignedOrders, activeElevators, selfId)
+		// }
 
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
-				for _, elev := range activeElevators {
+				// for _, elev := range activeElevators {
 					// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-					fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
-				}
+				// 	fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+				// }
 				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)

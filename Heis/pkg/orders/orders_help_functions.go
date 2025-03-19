@@ -113,13 +113,13 @@ func confirmAndStartOrder(AssignedOrders *map[string][][]elevator.OrderState, El
 	localAssignedOrder chan elevio.ButtonEvent) {
 	// if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Unconfirmed) || (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn])) {
 	if shouldStartLocalOrder(*AssignedOrders, Elevators, activeElevators, selfId, floor, btn) {	
-		// fmt.Println("start")
 		order := elevio.ButtonEvent{
 			Floor:  floor,
 			Button: elevio.ButtonType(btn),
 		}
 		select {
 		case localAssignedOrder <- order:
+			// fmt.Println("start")
 			setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Confirmed)
 		default:
 				//non blocking
