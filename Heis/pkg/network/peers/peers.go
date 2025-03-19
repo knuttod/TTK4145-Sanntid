@@ -84,8 +84,8 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 	for {
 		select {
 		case enable = <-transmitEnable:
-			// Update the enable flag
 		case <-time.After(interval):
+		}
 			// Non-blocking check for updates on ordersToPeersCH
 			select {
 			case networkElevator = <-ordersToPeersCH:
@@ -118,8 +118,11 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 					fmt.Println("Send error:", err)
 					continue
 				}
+				if id == "heis1" {
+					// fmt.Println("send iter", iter)
+				}
 				// fmt.Println("Data sent successfully")
-			}
+			// }
 		}
 	}
 }
@@ -189,7 +192,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 // 	}
 // }
 
-func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
+func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -277,13 +280,14 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 		}
 
 		if updateFlag {
+			fmt.Println("change in peers")
 
 			select {
 			case peerUpdateCh <- updatePeers:
 				// Successfully sent to channel
 				fmt.Println("Connected peers:", updatePeers.Peers)
 				updateFlag = false
-			default:
+			// default:
 				// Channel is full, skipping send
 				// fmt.Println("peerUpdateCh channel is full, skipping send")
 			}
@@ -292,14 +296,23 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- m
 		}
 
 		// Forward the full elevator state to order module
-		select {
-		case elevatorStateCh <- msg:
-			// Successfully sent to channel
-		default:
-			// Channel is full, skipping send
-			// fmt.Println("elevatorStateCh channel is full, skipping send")
+		//legge til buffer for forskjellige heiser
+		if msg.Id != selfId {
+			select {
+			case elevatorStateCh <- msg:
+				// Successfully sent to channel
+			default:
+				// Channel is full, skipping send
+				// fmt.Println("elevatorStateCh channel is full, skipping send")
+			}
 		}
-		// fmt.Println("Id:", msg.Id, "Iter:", msg.Iter)
+		if msg.Id == "heis1" {
+
+			// fmt.Println("Id:", msg.Id, "Iter:", msg.Iter)
+		}
+		
+
+		// fmt.Println("Id:", msg.Id)
 	}
 }
 

@@ -5,8 +5,11 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
+	"time"
+
 	// "Heis/pkg/timer"
 	"Heis/pkg/deepcopy"
+	// "time"
 	"fmt"
 )
 
@@ -48,206 +51,69 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 	// kan være en ide å resette heisen dersom dette skjer
 
 
-	// denne blir stuck noen ganger, vet ikke helt hvorfor??
 	for {
-		// ordersToPeersCH <- Elevators[selfId]
+		start := time.Now()
 		ordersToPeersCH <- deepcopy.DeepCopyNettworkElevator(Elevators[selfId])
-		// fmt.Println("tic")
-		
+		dur := time.Since(start)
+		fmt.Println("dur", dur)
 		select {
 		case elev := <- fsmToOrdersCH:
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
-		case p := <- peerUpdateCh:
-			activeElevators = p.Peers
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-			// kjøre reassign orders på heisene som ligger i lost. 
-			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
-
-			fmt.Println("len", len(p.Lost))
-			if len(p.Lost) > 0 {
-				for _, elev := range p.Lost {
-					temp := Elevators[elev]
-					temp.Elevator.Behaviour = elevator.EB_Unavailable
-					Elevators[elev] = temp
-				}
-				fmt.Println("lost")
-
-				//alt dette bør bli en funksjon og ikke kjøres her
-				reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), assignedOrders, activeElevators, selfId)
-				for _, elev := range p.Lost {
-					temp := Elevators[elev]
-					tempOrders := temp.AssignedOrders
-					for floor := range N_floors {
-						for btn := range N_buttons -1 {
-							setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_Unknown)
-							temp.AssignedOrders = tempOrders
-							Elevators[elev] = temp
-						}
-					}
-				}
-			}
-
-			//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
-
-			if len(p.Peers) == 1 {
-				for id := range (*assignedOrders) {
-					// Kanskje ikke sette sine egne til unkown
-					if id == selfId {
-						continue
-					}
-					for floor := range N_floors {
-						for btn := range (N_buttons - 1) {
-							setOrder(assignedOrders, id, floor, btn, elevator.Ordr_Unknown)
-						}
-					}
-				}
-				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
-			}
-		
-		default:
-
-		}
-		fmt.Println("hei")
-			select {
-			case remoteElevatorState := <-remoteElevatorCh:
-				// fmt.Println("upd")
-				if remoteElevatorState.Id != selfId {
-					// fmt.Println("remote")
-					updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
-					if assignedOrdersKeysCheck(Elevators, activeElevators){
-						// fmt.Println("merge")
-						// fmt.Println("active", activeElevators)
-						orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
-						Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
-					}
-					
-					// resetTimer <- timeOutTime
-				}
-			default:
-				//if no updates available skip to next iteration
-				continue
-			}
-
-		// default:
-			//non blocking
-		
-
-		fmt.Println("toc")
-
-		select {
-		// case elev := <- fsmToOrdersCH:
-		// 	fmt.Println("før")
-		// 	Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
-		// 	fmt.Println("etter")
+		// case p := <- peerUpdateCh:
+		// 	peerUpdateHandler(assignedOrders, &Elevators, &activeElevators, selfId, p)
 		case btn_input := <- buttonPressCH:
-			fmt.Println("assign")
+			// fmt.Println("assign")
 			if assignedOrdersKeysCheck(Elevators, activeElevators){
 				assignOrder(assignedOrders, deepcopy.DeepCopyElevatorsMap(Elevators), activeElevators, selfId, btn_input)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
-			//starte timer for å sjekke tid
-
-		
-		//denne trenger kun å si ifra at den er ferdig for timer
 		case completed_order := <- completedOrderCH:
-
-
-			fmt.Println("done")
+			// fmt.Println("done")
 
 			if (*assignedOrders)[selfId][completed_order.Floor][int(completed_order.Button)] == elevator.Ordr_Confirmed {
 				setOrder(assignedOrders, selfId, completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
-
-			// //si til timer at den ble fullført innen tiden
-			// resetTimer <- timeOutTime
-		
-		//denne gjør at select ikke blir stuck
-		// case remoteElevatorState := <-remoteElevatorCh:
-		// 	if remoteElevatorState.Id != selfId {
-		// 		// fmt.Println("remote")
-		// 		updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
-		// 		if assignedOrdersKeysCheck(Elevators, activeElevators){
-		// 			// fmt.Println("merge")
-		// 			orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
-		// 			Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
-		// 		}
+		// default:
+		// }
+			// select {
+		case p := <- peerUpdateCh:
+			peerUpdateHandler(assignedOrders, &Elevators, &activeElevators, selfId, p)
+		case remoteElevatorState := <-remoteElevatorCh: //sender hele tiden
+		fmt.Println("msg")
+		if remoteElevatorState.Id != selfId {
+			fmt.Println("remote")
+			updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
+			if assignedOrdersKeysCheck(Elevators, activeElevators){
+				// fmt.Println("merge")
+				// fmt.Println("active", activeElevators)
+				orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
+				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
+			}
 				
-		// 		// resetTimer <- timeOutTime
-		// 	}
+				// resetTimer <- timeOutTime
+			// }
+			// default:
+				//non blocking
+			}
 
-		// case p := <- peerUpdateCh:
-		// 	activeElevators = p.Peers
-		// 	fmt.Printf("Peer update:\n")
-		// 	fmt.Printf("  Peers:    %q\n", p.Peers)
-		// 	fmt.Printf("  New:      %q\n", p.New)
-		// 	fmt.Printf("  Lost:     %q\n", p.Lost)
-		// 	// kjøre reassign orders på heisene som ligger i lost. 
-		// 	// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
-
-		// 	fmt.Println("len", len(p.Lost))
-		// 	if len(p.Lost) > 0 {
-		// 		for _, elev := range p.Lost {
-		// 			temp := Elevators[elev]
-		// 			temp.Elevator.Behaviour = elevator.EB_Unavailable
-		// 			Elevators[elev] = temp
-		// 		}
-		// 		fmt.Println("lost")
-
-		// 		//alt dette bør bli en funksjon og ikke kjøres her
-		// 		reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), assignedOrders, activeElevators, selfId)
-		// 		for _, elev := range p.Lost {
-		// 			temp := Elevators[elev]
-		// 			tempOrders := temp.AssignedOrders
-		// 			for floor := range N_floors {
-		// 				for btn := range N_buttons -1 {
-		// 					setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_Unknown)
-		// 					temp.AssignedOrders = tempOrders
-		// 					Elevators[elev] = temp
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-
-		// 	//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
-
-		// 	if len(p.Peers) == 1 {
-		// 		for id := range (*assignedOrders) {
-		// 			// Kanskje ikke sette sine egne til unkown
-		// 			if id == selfId {
-		// 				continue
-		// 			}
-		// 			for floor := range N_floors {
-		// 				for btn := range (N_buttons - 1) {
-		// 					setOrder(assignedOrders, id, floor, btn, elevator.Ordr_Unknown)
-		// 				}
-		// 			}
-		// 		}
-		// 		Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
-		// 	}
-	
-
-			// resetTimer <- timeOutTime
-
-		// case <- timerTimeOut:
-			// fmt.Println("Timer timed out")
-		default:
-			//to not stall
+		// case <- singleElevatorTic:
+			//To keep it working with only one elevator
+			//run a go routine which sends at a given rate if activeElevators have lenght 1
+			//not run it here but output comes here
+			
 		}
 
-		//trenger å kjøre denne her for motorstopp senere
-		// reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), assignedOrders, activeElevators, selfId)
+		//kanskje kjøre reassign orders her
+		// start := time.Now()
 
-		// Check if an unstarted assigned order should be started
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
-				// for _, elev := range activeElevators {
-				// 	fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-				// }
+				for _, elev := range activeElevators {
+					// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+					fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+				}
 				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
@@ -259,12 +125,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 				}
 			}
 		}
-		//non blocking
-
-		//set lights
-		//litt buggy på macsimmen, kanskje bedre andre steder?
-		// setAllHallLightsfromRemote(*remoteElevators, activeElevators, (*e).Id)
-
+		// duration := time.Since(start)
+		// fmt.Println("dur", duration)
 	}
 }
 

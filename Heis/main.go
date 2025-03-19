@@ -76,7 +76,7 @@ func main() {
 
 	localAssignedOrderCH := make(chan elevio.ButtonEvent) //might need buffer
 	buttonPressCH := make(chan elevio.ButtonEvent) //might need buffer
-	completedOrderCh := make(chan elevio.ButtonEvent)
+	completedOrderCh := make(chan elevio.ButtonEvent, 3) //can clear up to 3 orders at a time
 
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
@@ -93,7 +93,7 @@ func main() {
 	go bcast.Receiver(15648, newNodeRx)
 
 	go peers.Transmitter(15647, id, peerTxEnable, ordersToPeersCH)
-	go peers.Receiver(15647, peerUpdateCh, remoteElevatorCh)
+	go peers.Receiver(15647, id, peerUpdateCh, remoteElevatorCh)
 	
 	go fsm.Fsm(&e, drv_buttons, drv_floors, drv_obstr, drv_stop, drv_doorTimerStart, drv_doorTimerFinished, id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	

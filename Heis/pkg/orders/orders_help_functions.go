@@ -1,10 +1,11 @@
 package orders
 
 import (
+	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
-	// "Heis/pkg/deepcopy"
+	"Heis/pkg/network/peers"
 	"fmt"
 	// "reflect"
 	// "sort"
@@ -112,7 +113,7 @@ func confirmAndStartOrder(AssignedOrders *map[string][][]elevator.OrderState, El
 	localAssignedOrder chan elevio.ButtonEvent) {
 	// if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Unconfirmed) || (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn])) {
 	if shouldStartLocalOrder(*AssignedOrders, Elevators, activeElevators, selfId, floor, btn) {	
-		fmt.Println("start")
+		// fmt.Println("start")
 		order := elevio.ButtonEvent{
 			Floor:  floor,
 			Button: elevio.ButtonType(btn),
@@ -194,5 +195,57 @@ func setOrder(orderMap *map[string][][]elevator.OrderState, elevId string, floor
 // 	copy[floor][btn] = state
 // 	return copy
 // }
+
+
+func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, activeElevators * []string, selfId string, p peers.PeerUpdate) {
+	*activeElevators = p.Peers
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
+			// kjøre reassign orders på heisene som ligger i lost. 
+			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
+
+			fmt.Println("len", len(p.Lost))
+			if len(p.Lost) > 0 {
+				for _, elev := range p.Lost {
+					temp := (*Elevators)[elev]
+					temp.Elevator.Behaviour = elevator.EB_Unavailable
+					(*Elevators)[elev] = temp
+				}
+				fmt.Println("lost")
+
+				//alt dette bør bli en funksjon og ikke kjøres her
+				reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, *activeElevators, selfId)
+				for _, elev := range p.Lost {
+					temp := (*Elevators)[elev]
+					tempOrders := temp.AssignedOrders
+					for floor := range N_floors {
+						for btn := range N_buttons -1 {
+							setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_Unknown)
+							temp.AssignedOrders = tempOrders
+							(*Elevators)[elev] = temp
+						}
+					}
+				}
+			}
+
+			//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
+
+			if len(p.Peers) == 1 {
+				for id := range (*assignedOrders) {
+					// Kanskje ikke sette sine egne til unkown
+					if id == selfId {
+						continue
+					}
+					for floor := range N_floors {
+						for btn := range (N_buttons - 1) {
+							setOrder(assignedOrders, id, floor, btn, elevator.Ordr_Unknown)
+						}
+					}
+				}
+				(*Elevators)[selfId] = elevator.NetworkElevator{Elevator: (*Elevators)[selfId].Elevator, AssignedOrders: *assignedOrders}
+			}
+}
 
 
