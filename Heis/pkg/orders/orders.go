@@ -5,7 +5,6 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
-	"time"
 
 	// "Heis/pkg/timer"
 	"Heis/pkg/deepcopy"
@@ -40,6 +39,11 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 	var activeElevators []string
 
+	singleElevatorTic := make(chan bool)
+	activeElevatorsCH := make(chan []string, 1) //buffer of 1 to prevent deadlock for two or more elevators
+
+	go oneElevatorTic(activeElevatorsCH, singleElevatorTic)
+
 	
 	// resetTimer := make(chan float64)
 	// timerTimeOut := make(chan bool)
@@ -52,15 +56,10 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 
 	for {
-		start := time.Now()
 		ordersToPeersCH <- deepcopy.DeepCopyNettworkElevator(Elevators[selfId])
-		dur := time.Since(start)
-		fmt.Println("dur", dur)
 		select {
 		case elev := <- fsmToOrdersCH:
 			Elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: *assignedOrders}
-		// case p := <- peerUpdateCh:
-		// 	peerUpdateHandler(assignedOrders, &Elevators, &activeElevators, selfId, p)
 		case btn_input := <- buttonPressCH:
 			// fmt.Println("assign")
 			if assignedOrdersKeysCheck(Elevators, activeElevators){
@@ -69,38 +68,33 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			}
 		case completed_order := <- completedOrderCH:
 			// fmt.Println("done")
-
 			if (*assignedOrders)[selfId][completed_order.Floor][int(completed_order.Button)] == elevator.Ordr_Confirmed {
 				setOrder(assignedOrders, selfId, completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
 				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
 			}
-		// default:
-		// }
+
 			// select {
 		case p := <- peerUpdateCh:
 			peerUpdateHandler(assignedOrders, &Elevators, &activeElevators, selfId, p)
+			fmt.Println("bef")
+			activeElevatorsCH <- activeElevators 
+			fmt.Println("tac")
 		case remoteElevatorState := <-remoteElevatorCh: //sender hele tiden
-		fmt.Println("msg")
-		if remoteElevatorState.Id != selfId {
-			fmt.Println("remote")
-			updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
-			if assignedOrdersKeysCheck(Elevators, activeElevators){
-				// fmt.Println("merge")
-				// fmt.Println("active", activeElevators)
-				orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
-				Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
-			}
-				
-				// resetTimer <- timeOutTime
-			// }
-			// default:
-				//non blocking
+			fmt.Println("msg")
+			if remoteElevatorState.Id != selfId {
+				fmt.Println("remote")
+				updateFromRemoteElevator(assignedOrders, &Elevators, remoteElevatorState)
+				if assignedOrdersKeysCheck(Elevators, activeElevators){
+					// fmt.Println("merge")
+					orderMerger(assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
+					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: *assignedOrders}
+				}
 			}
 
-		// case <- singleElevatorTic:
-			//To keep it working with only one elevator
-			//run a go routine which sends at a given rate if activeElevators have lenght 1
-			//not run it here but output comes here
+		case <- singleElevatorTic:
+			// To keep it working with only one elevator
+			// run a go routine which sends at a given rate if activeElevators have lenght 1
+			// not run it here but output comes here
 			
 		}
 

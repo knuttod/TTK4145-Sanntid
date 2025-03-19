@@ -7,6 +7,7 @@ import (
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
 	"fmt"
+	"time"
 	// "reflect"
 	// "sort"
 )
@@ -249,3 +250,22 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 }
 
 
+func oneElevatorTic(activeElevators chan []string, tic chan bool) {
+	interval := 15 * time.Millisecond
+	active := <- activeElevators
+	for {
+		select {
+		case active = <- activeElevators:
+		default:
+			//continue if no update
+		}
+		// fmt.Println("asdf")
+		// fmt.Println(len(active))
+
+		if len(active) == 1 {
+			fmt.Println("er")
+			<- time.After(interval)
+			tic <- true
+		}
+	}
+}
