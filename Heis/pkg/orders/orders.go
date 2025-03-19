@@ -39,8 +39,8 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 
 	var activeElevators []string
 
-	singleElevatorTic := make(chan bool)
-	activeElevatorsCH := make(chan []string, 1) //buffer of 1 to prevent deadlock for two or more elevators
+	singleElevatorTic := make(chan bool, 1)
+	activeElevatorsCH := make(chan []string, 2) //buffer of 1 to prevent deadlock for two or more elevators
 
 	go oneElevatorTic(activeElevatorsCH, singleElevatorTic)
 
@@ -99,7 +99,6 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 		}
 
 		//kanskje kjøre reassign orders her
-		// start := time.Now()
 
 		for floor := range N_floors {
 			for btn := range N_buttons {

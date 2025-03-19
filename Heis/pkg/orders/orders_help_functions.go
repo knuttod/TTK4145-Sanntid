@@ -256,16 +256,20 @@ func oneElevatorTic(activeElevators chan []string, tic chan bool) {
 	for {
 		select {
 		case active = <- activeElevators:
-		default:
+		case <- time.After(interval):
+			if len(active) == 1 {
+				tic <- true
+			}
+		// default:
 			//continue if no update
 		}
 		// fmt.Println("asdf")
 		// fmt.Println(len(active))
 
-		if len(active) == 1 {
-			fmt.Println("er")
-			<- time.After(interval)
-			tic <- true
-		}
+		// if len(active) == 1 {
+		// 	fmt.Println("er")
+		// 	<- time.After(interval)
+		// 	tic <- true
+		// }
 	}
 }
