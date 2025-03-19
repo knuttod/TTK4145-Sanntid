@@ -213,7 +213,6 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 			// kjøre reassign orders på heisene som ligger i lost. 
 			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
 
-			fmt.Println("len", len(p.Lost))
 			if len(p.Lost) > 0 {
 				for _, elev := range p.Lost {
 					temp := (*Elevators)[elev]

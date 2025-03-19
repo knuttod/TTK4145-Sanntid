@@ -55,10 +55,10 @@ func Fsm(elev *elevator.Elevator, drv_buttons chan elevio.ButtonEvent, drv_floor
 		case obstruction := <-drv_obstr:
 			if obstruction {
 				(*elev).Obstructed = true
-				(*elev).Behaviour = elevator.EB_Unavailable
+				// (*elev).Behaviour = elevator.EB_Unavailable
 			} else {
 				(*elev).Obstructed = false
-				(*elev).Behaviour = elevator.EB_DoorOpen
+				// (*elev).Behaviour = elevator.EB_DoorOpen
 				doorTimerStartCH <- (*elev).Config.DoorOpenDuration_s
 			}
 

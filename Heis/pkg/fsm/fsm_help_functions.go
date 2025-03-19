@@ -58,7 +58,7 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 		}
 
 	}
-	setAllLights(e)
+	setCabLights(e)
 }
 
 // When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
@@ -76,7 +76,7 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			//drv_doorTimer <- 0.0
-			setAllLights(e)
+			setCabLights(e)
 			(*e).Behaviour = elevator.EB_DoorOpen
 		}
 	}
@@ -100,7 +100,7 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrde
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s //????
 			//drv_doorTimer <- 0.0
 			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
-			setAllLights(e)
+			setCabLights(e)
 
 		//lagt inn selv
 		case elevator.EB_Moving:
@@ -119,16 +119,16 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, completedOrde
 
 // Updates the elevator's button lights to reflect the current request states.
 // Turns on lights for active LocalOrders and turns them off otherwise.
-func setAllLights(e *elevator.Elevator) {
+func setCabLights(e *elevator.Elevator) {
 	//set ligths
 	for floor := 0; floor < N_floors; floor++ {
 		// for btn := 0; btn < N_buttons; btn++ {
-		btn := 2
-			if e.LocalOrders[floor][btn] {
-				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
-			} else {
-				elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
-			}
+		btn := int(elevio.BT_Cab)
+		if e.LocalOrders[floor][btn] {
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
+		} else {
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
+		}
 		// }
 	}
 }

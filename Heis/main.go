@@ -6,9 +6,6 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
 	"Heis/pkg/msgTypes"
-
-	// "Heis/pkg/network/bcast"
-	"Heis/pkg/network/bcast"
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
@@ -89,8 +86,6 @@ func main() {
 
 	go timer.Timer(drv_doorTimerStart, drv_doorTimerFinished)
 
-	go bcast.Transmitter(15648, newNodeTx)
-	go bcast.Receiver(15648, newNodeRx)
 
 	go peers.Transmitter(15647, id, peerTxEnable, ordersToPeersCH)
 	go peers.Receiver(15647, id, peerUpdateCh, remoteElevatorCh)

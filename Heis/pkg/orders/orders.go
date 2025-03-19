@@ -41,16 +41,6 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 	activeHallLights := initHallLights()
 
 
-	
-	// resetTimer := make(chan float64)
-	// timerTimeOut := make(chan bool)
-	// timeOutTime := 10.0
-	// go timer.Timer(resetTimer, timerTimeOut)
-	//Lage en watchdog funksjon som gjør noe dersom timeren utløper
-	// sette opp en timer som må kontinuerlig resettes, dersom den ikke gjør det send på en channel her som da gjør et eller annet, f.eks resetter programmet
-	// dette kan brukes for å sjekke for motorstopp?
-	// kan være en ide å resette heisen dersom dette skjer
-
 
 	for {
 		ordersToPeersCH <- deepcopy.DeepCopyNettworkElevator(Elevators[selfId])
@@ -73,9 +63,6 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			// select {
 		case p := <- peerUpdateCh:
 			peerUpdateHandler(assignedOrders, &Elevators, &activeElevators, selfId, p)
-			fmt.Println("bef")
-			// activeElevatorsCH <- activeElevators 
-			fmt.Println("tac")
 		case remoteElevatorState := <-remoteElevatorCh: //sender hele tiden
 			// fmt.Println("msg")
 			if remoteElevatorState.Id != selfId {
@@ -98,8 +85,9 @@ func OrderHandler(e elevator.Elevator, assignedOrders *map[string][][]elevator.O
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
 				// for _, elev := range activeElevators {
-					// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-				// 	fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+				// 	// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+				// 	// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+				// 	fmt.Println(elev, ":", Elevators[elev].Elevator.Obstructed)
 				// }
 				// fmt.Println("Local: ", (*assignedOrders))
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
