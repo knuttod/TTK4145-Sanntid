@@ -28,7 +28,7 @@ func Timer(TimerStart chan float64, TimerEnd chan bool) {
 }
 
 func MotorStopTimer(floorArrivalCh, motorTimeoutStartCh, motorStopTimeoutCh chan bool) {
-	timeoutInterval := 5 * time.Second
+	timeoutInterval := 7 * time.Second
 	// fmt.Println("start")
 	// select {
 	// case <- time.After(timeoutInterval):
@@ -38,30 +38,28 @@ func MotorStopTimer(floorArrivalCh, motorTimeoutStartCh, motorStopTimeoutCh chan
 	// fmt.Println("finnish")
 
 	fmt.Println("Timer started")
-	
-	
+
+
+	timer := time.NewTimer(timeoutInterval)
+	// if !timer.Stop() {
+	// 	<-timer.C
+	// }
 	for {
 		select {
 		case <-motorTimeoutStartCh:
-			timer := time.NewTimer(time.Second * time.Duration(timeoutInterval))
-			for {
-				fmt.Println("tim start")
-				select {
-				case <- motorTimeoutStartCh:
-					// fmt.Println("bef rest")
-					timer.Reset(timeoutInterval)
-					// fmt.Println("adt rest")
+			// fmt.Println("bef rest")
+			timer.Reset(timeoutInterval)
+			// fmt.Println("adt rest")
 
-				case <- floorArrivalCh:
-					fmt.Println("floor arrival")
-					break
-
-				case <-timer.C:
-					fmt.Println("timeout")
-					motorStopTimeoutCh <- true
-					// break
-				}
+		case <-floorArrivalCh:
+			if !timer.Stop() {
+				<-timer.C
+			// break active
 			}
+
+		case <-timer.C:
+			motorStopTimeoutCh <- true
 		}
 	}
+
 }

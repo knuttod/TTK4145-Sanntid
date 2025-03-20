@@ -29,8 +29,8 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			// send clear to assigned orders
 			completedOrderCH <- elevio.ButtonEvent{
-					Floor: btn_floor,
-					Button: btn_type,
+				Floor:  btn_floor,
+				Button: btn_type,
 			}
 		} else {
 			(*e).LocalOrders[btn_floor][btn_type] = true
@@ -54,6 +54,7 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 		case elevator.EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)
 			//clear something at this floor??
+
 			motorTimoutStartCh <- true
 
 		case elevator.EB_Idle:
@@ -73,10 +74,10 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 
 	if !(*e).MotorStop {
 		select {
-		case <- floorArrivalCh:
+		case floorArrivalCh <- true:
 		default:
 		}
-		
+
 	}
 	if (*e).MotorStop {
 		fmt.Println("power back")
@@ -95,6 +96,7 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 			(*e).Behaviour = elevator.EB_DoorOpen
 		} else {
 			motorTimoutStartCh <- true
+
 		}
 	}
 }
@@ -133,7 +135,6 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, floorArrivalC
 		}
 	}
 }
-
 
 // Updates the elevator's button lights to reflect the current request states.
 // Turns on lights for active LocalOrders and turns them off otherwise.

@@ -5,7 +5,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/timer"
-	// "fmt"
+	"fmt"
 	// "fmt"
 )
 
@@ -13,8 +13,7 @@ import (
 const N_floors = 4
 const N_buttons = 3
 
-
-// FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCH, localRequestCH and completedOrderCH. 
+// FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCH, localRequestCH and completedOrderCH.
 // Also takes input from elevio on drv channels. Interacts with external timer on doorTimerStartCH and doorTimerFinishedCH
 func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan elevio.ButtonEvent, fsmToOrdersCH chan elevator.Elevator) {
 
@@ -27,19 +26,18 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	doorTimerFinishedCh := make(chan bool)
 
 	floorArrivalCh := make(chan bool)
-	motorTimoutStartCh := make(chan bool, 5)
+	motorTimoutStartCh := make(chan bool)
 	motorStopCh := make(chan bool)
 
 	go elevio.PollButtons(drvButtonsCh)
 	go elevio.PollFloorSensor(drvFloorsCh)
 	go elevio.PollObstructionSwitch(drvObstrCh)
 	go elevio.PollStopButton(drvStopCh) //kanskje implementere stop?
-	
+
 	//denne bør ha annet navn
 	go timer.Timer(doorTimerStartCh, doorTimerFinishedCh)
 
 	go timer.MotorStopTimer(floorArrivalCh, motorTimoutStartCh, motorStopCh)
-
 
 	elev := elevator.Elevator_init(N_floors, N_buttons, id)
 
@@ -53,7 +51,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	}
 
 	// fmt.Println("startFloor: ",elev.Floor)
-	
+
 	//trenger kanskje ikke denne
 	fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 
@@ -87,8 +85,8 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 				// (*elev).Behaviour = elevator.EB_DoorOpen
 				doorTimerStartCh <- elev.Config.DoorOpenDuration_s
 			}
-		case <- motorStopCh:
-			// fmt.Println("motorstop")
+		case <-motorStopCh:
+			fmt.Println("motorstop")
 			elev.MotorStop = true
 
 		case <-doorTimerFinishedCh:
@@ -97,7 +95,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 				// fmt.Println("drv_doortimer timed out")
 				DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 			}
-		// default:
+			// default:
 			//non blocking
 		}
 	}

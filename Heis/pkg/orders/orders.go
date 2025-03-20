@@ -76,9 +76,9 @@ func OrderHandler(selfId string,
 		}
 
 		//kanskje kjøre reassign orders her
-		if assignedOrdersKeysCheck(Elevators, activeElevators, selfId) && (len(activeElevators) > 1){
-			reassignOrders(Elevators, &assignedOrders, activeElevators, selfId)
-		}
+		// if assignedOrdersKeysCheck(Elevators, activeElevators, selfId) && (len(activeElevators) > 1){
+		// 	reassignOrders(Elevators, &assignedOrders, activeElevators, selfId)
+		// }
 
 		for floor := range N_floors {
 			for btn := range N_buttons {
