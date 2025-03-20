@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+//Bør skrive om dette til doortimer
 // Takes in timer duration on timer start and sends on timer End when timer is finished. If timer start is sent twice before done, the timer is reset
 func Timer(TimerStart chan float64, TimerEnd chan bool) {
 

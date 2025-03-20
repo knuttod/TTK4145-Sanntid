@@ -6,7 +6,7 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/msgTypes"
 	"Heis/pkg/network/peers"
-	"fmt"
+	// "fmt"
 	// "reflect"
 	// "sort"
 )
@@ -31,7 +31,6 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 	var currentState elevator.OrderState
 	var updateState elevator.OrderState
 
-
 	for _, id := range activeElevators {
 		for floor := range N_floors {
 			for btn := range N_buttons {
@@ -46,9 +45,9 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Unconfirmed)
 					case elevator.Ordr_Confirmed:
 						setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Confirmed)
-					//Not this case to prevent un resetting cyclic counter
-					// case elevator.Ordr_Complete:
-					// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
+						//Not this case to prevent un resetting cyclic counter
+						// case elevator.Ordr_Complete:
+						// 	setOrder(AssignedOrders, id, floor, btn, elevator.Ordr_Complete)
 					}
 
 				case elevator.Ordr_Unconfirmed:
@@ -112,7 +111,7 @@ func shouldStartLocalOrder(AssignedOrders map[string][][]elevator.OrderState, El
 func confirmAndStartOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int,
 	localAssignedOrder chan elevio.ButtonEvent) {
 	// if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Unconfirmed) || (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn])) {
-	if shouldStartLocalOrder(*AssignedOrders, Elevators, activeElevators, selfId, floor, btn) {	
+	if shouldStartLocalOrder(*AssignedOrders, Elevators, activeElevators, selfId, floor, btn) {
 		order := elevio.ButtonEvent{
 			Floor:  floor,
 			Button: elevio.ButtonType(btn),
@@ -122,10 +121,9 @@ func confirmAndStartOrder(AssignedOrders *map[string][][]elevator.OrderState, El
 			// fmt.Println("start")
 			setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_Confirmed)
 		default:
-				//non blocking
+			//non blocking
 		}
-		
-		
+
 	}
 }
 
@@ -134,8 +132,6 @@ func clearOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators ma
 		setOrder(AssignedOrders, selfId, floor, btn, elevator.Ordr_None)
 	}
 }
-
-
 
 // Updates remoteElevator map and adds entries for remote Elevator in assignedOrders map for local elevator if they do not exist yet.
 func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, remoteElevatorState msgTypes.ElevatorStateMsg) {
@@ -203,66 +199,50 @@ func setOrder(orderMap *map[string][][]elevator.OrderState, elevId string, floor
 // 	return copy
 // }
 
+func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, activeElevators []string, selfId string, p peers.PeerUpdate) {
 
-func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, activeElevators * []string, selfId string, p peers.PeerUpdate) {
-	*activeElevators = p.Peers
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-			// kjøre reassign orders på heisene som ligger i lost. 
-			// Antar man kan gjøre noe nice med new for å synkronisere/gi ordre etter avkobling/restart
+	//detects disconnected elevators and reassigns their orders
+	if len(p.Lost) > 0 {
+		for _, elev := range p.Lost {
+			temp := (*Elevators)[elev]
+			temp.Elevator.Behaviour = elevator.EB_Unavailable
+			(*Elevators)[elev] = temp
+		}
 
-			if len(p.Lost) > 0 {
-				for _, elev := range p.Lost {
-					temp := (*Elevators)[elev]
-					temp.Elevator.Behaviour = elevator.EB_Unavailable
-					(*Elevators)[elev] = temp
-				}
-				fmt.Println("lost")
-
-				//alt dette bør bli en funksjon og ikke kjøres her
-				reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, *activeElevators, selfId)
-				for _, elev := range p.Lost {
-					temp := (*Elevators)[elev]
-					tempOrders := temp.AssignedOrders
-					for floor := range N_floors {
-						for btn := range N_buttons -1 {
-							setOrder(&tempOrders, elev, floor, btn, elevator.Ordr_Unknown)
-							temp.AssignedOrders = tempOrders
-							(*Elevators)[elev] = temp
-						}
-					}
+		reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
+		for _, elev := range p.Lost {
+			for floor := range N_floors {
+				for btn := range N_buttons - 1 {
+					setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
 				}
 			}
+		}
+	}
 
-			//sette hall orders på seg selv til unkown dersom man ikke har noen andre peers
-
-			if len(p.Peers) == 1 {
-				for id := range (*assignedOrders) {
-					// Kanskje ikke sette sine egne til unkown
-					if id == selfId {
-						continue
-					}
-					for floor := range N_floors {
-						for btn := range (N_buttons - 1) {
-							setOrder(assignedOrders, id, floor, btn, elevator.Ordr_Unknown)
-						}
-					}
-				}
-				(*Elevators)[selfId] = elevator.NetworkElevator{Elevator: (*Elevators)[selfId].Elevator, AssignedOrders: *assignedOrders}
+	//sets orders on all other elevators to unkwown, since information can not be trusted
+	if len(p.Peers) == 1 {
+		for id := range *assignedOrders {
+			// Kanskje ikke sette sine egne til unkown
+			if id == selfId {
+				continue
 			}
+			for floor := range N_floors {
+				for btn := range N_buttons - 1 {
+					setOrder(assignedOrders, id, floor, btn, elevator.Ordr_Unknown)
+				}
+			}
+		}
+	}
 }
 
-
 func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElevators []string, activeHallLights [][]bool) [][]bool {
-	for floor := range N_floors{
-		for btn := range (N_buttons - 1) {
+	for floor := range N_floors {
+		for btn := range N_buttons - 1 {
 			setLight := false
 			for _, elev := range activeElevators {
 				if assignedOrders[elev][floor][btn] == elevator.Ordr_Confirmed {
 					setLight = true
-					break;
+					break
 				}
 			}
 			if setLight != activeHallLights[floor][btn] {
@@ -274,15 +254,14 @@ func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElev
 	return activeHallLights
 }
 
-func initHallLights() [][]bool{
+func initHallLights() [][]bool {
 	activeHallLights := make([][]bool, N_floors)
 	for floor := range N_floors {
-		activeHallLights[floor] = make([]bool, N_buttons - 1)
-		for btn := range (N_buttons - 1) {
+		activeHallLights[floor] = make([]bool, N_buttons-1)
+		for btn := range N_buttons - 1 {
 			activeHallLights[floor][btn] = false
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 		}
 	}
 	return activeHallLights
 }
-

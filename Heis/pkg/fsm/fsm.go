@@ -77,8 +77,9 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 				//clear local orders
 
 				elev.Obstructed = true
-				elev = clearLocalOrders(elev)
-
+				elev = clearLocalHallOrders(elev)
+				fmt.Println("cleared Local Orders")
+				fmt.Println(elev.LocalOrders)
 				// (*elev).Behaviour = elevator.EB_Unavailable
 			} else {
 				elev.Obstructed = false
@@ -88,6 +89,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 		case <-motorStopCh:
 			fmt.Println("motorstop")
 			elev.MotorStop = true
+			elev = clearLocalHallOrders(elev)
 
 		case <-doorTimerFinishedCh:
 			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {

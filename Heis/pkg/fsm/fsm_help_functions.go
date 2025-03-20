@@ -152,9 +152,9 @@ func setCabLights(e *elevator.Elevator) {
 	}
 }
 
-func clearLocalOrders(e elevator.Elevator) elevator.Elevator {
+func clearLocalHallOrders(e elevator.Elevator) elevator.Elevator {
 	for floor := range N_floors {
-		for btn := range N_buttons {
+		for btn := range (N_buttons-1) {
 			e.LocalOrders[floor][btn] = false
 		}
 	}
