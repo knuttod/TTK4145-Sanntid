@@ -41,6 +41,14 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 	elev := elevator.Elevator_init(N_floors, N_buttons, id)
 
+	for floor := range N_floors {
+		for btn := range N_buttons {
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
+			elevio.SetDoorOpenLamp(false)
+		}
+	}
+
+
 	floor := elevio.GetFloor()
 	if floor == -1 {
 		initBetweenFloors(&elev)
@@ -48,6 +56,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 		floorArrival(&elev, current_floor, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 	} else {
 		elev.Floor = floor
+		elevio.SetFloorIndicator(floor)
 	}
 
 	// fmt.Println("startFloor: ",elev.Floor)
@@ -94,7 +103,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {
 				DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 				// fmt.Println("drv_doortimer timed out")
-				DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
+				// DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
 			}
 			// default:
 			//non blocking
