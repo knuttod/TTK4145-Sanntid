@@ -95,7 +95,7 @@ func OrderHandler(selfId string,
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
 				for _, elev := range activeElevators {
-					// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+					fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
 					// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
 					if Elevators[elev].Elevator.Obstructed {
 						fmt.Println(elev, ": obstructed ", Elevators[elev].Elevator.Obstructed)

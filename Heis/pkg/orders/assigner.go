@@ -24,6 +24,8 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 						}
 						fmt.Println("reassign")
 						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
+						//unkown ac nettet
+						//complete ved obstruction eller motorstopp
 						setOrder(assignedOrders, elev.Elevator.Id, floor, btn, elevator.Ordr_Complete)
 					}
 				}
