@@ -89,12 +89,14 @@ func OrderHandler(selfId string,
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
-				// for _, elev := range activeElevators {
-				// 	// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-				// 	// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
-				// 	// fmt.Println(elev, ":", Elevators[elev].Elevator.Obstructed)
-				// 	fmt.Println(elev, ":", Elevators[elev].Elevator.MotorStop)
-				// }
+				for _, elev := range activeElevators {
+					// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+					// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+					if Elevators[elev].Elevator.Obstructed {
+						fmt.Println(elev, ": obstructed ", Elevators[elev].Elevator.Obstructed)
+					}
+					// fmt.Println(elev, ": motorstop ", Elevators[elev].Elevator.MotorStop)
+				}
 				// fmt.Println("Local: ", assignedOrders)
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
