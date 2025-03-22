@@ -78,8 +78,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 				elev.Obstructed = true
 				elev = clearLocalHallOrders(elev)
-				fmt.Println("cleared Local Orders")
-				fmt.Println(elev.LocalOrders)
+				fmt.Println("Obstruction switch activated")
 				// (*elev).Behaviour = elevator.EB_Unavailable
 			} else {
 				elev.Obstructed = false

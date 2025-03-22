@@ -64,8 +64,11 @@ func main() {
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
 	nettworkDisconnectCh := make(chan bool)
 
-	go peers.Transmitter(17135, id, peerTxEnable, nettworkDisconnectCh, ordersToPeersCH)
-	go peers.Receiver(17135, id, peerUpdateCh, remoteElevatorCh)
+	transmitterToRecivierSkipCh := make(chan bool)
+
+
+	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+	go peers.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
 	
 	go fsm.Fsm(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	

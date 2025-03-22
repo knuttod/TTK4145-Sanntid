@@ -29,33 +29,23 @@ func Timer(TimerStart chan float64, TimerEnd chan bool) {
 }
 
 func MotorStopTimer(floorArrivalCh, motorTimeoutStartCh, motorStopTimeoutCh chan bool) {
-	timeoutInterval := 7 * time.Second
-	// fmt.Println("start")
-	// select {
-	// case <- time.After(timeoutInterval):
-	// 	motorStopCh <- true
-	// case <- floorArrivalCh:
-	// }
-	// fmt.Println("finnish")
+	//denne bør kanskje tas inn via config eller liknende
+	//mindre enn 4 sekunder funker ikke på sim
+	// timeoutInterval := 4 * time.Second
+	timeoutInterval := 3900 * time.Millisecond
 
 	fmt.Println("Timer started")
 
 
 	timer := time.NewTimer(timeoutInterval)
-	// if !timer.Stop() {
-	// 	<-timer.C
-	// }
 	for {
 		select {
 		case <-motorTimeoutStartCh:
-			// fmt.Println("bef rest")
 			timer.Reset(timeoutInterval)
-			// fmt.Println("adt rest")
 
 		case <-floorArrivalCh:
 			if !timer.Stop() {
 				<-timer.C
-			// break active
 			}
 
 		case <-timer.C:

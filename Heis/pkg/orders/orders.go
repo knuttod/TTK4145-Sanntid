@@ -84,7 +84,9 @@ func OrderHandler(selfId string,
 			}
 		case <- nettworkDisconnectCh:
 			//To make sure the for loops run even when not reciving remoteElevatorState from peers.reciever
+			fmt.Println("disconnected")
 			activeElevators = []string{selfId}
+			// reassignOrdersFromDisconnectedElevators()
 		}
 
 		//kanskje kjøre reassign orders her

@@ -91,7 +91,6 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 			elevio.SetDoorOpenLamp(true)
 			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			//drv_doorTimer <- 0.0
 			setCabLights(e)
 			(*e).Behaviour = elevator.EB_DoorOpen
 		} else {

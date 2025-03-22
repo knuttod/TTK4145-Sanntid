@@ -1,0 +1,6 @@
+skal bare obstruksjonsknappen kunne aktiveres mens døren er åpen?
+
+hvor lang tid kan man anta at en heis bruker mellom to etasjer, for å kunne detektere motorstopp?
+
+Hvordan blir nettet koblet ut? Trekker man ut kabel/skrur av nettet, eller setter man opp 100% packet loss. 
+Knyttet til om man får feilmelding ved å sende/koble til på udp eller ikke
