@@ -212,14 +212,15 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 		//kanskje dette gjør at ordre ikke blir reassigned? Teste dette
 		//tanken er at en ny heis ikke skal dø
 		if assignedOrdersKeysCheck(*Elevators, activeElevators, selfId) {
-			reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
-			for _, elev := range p.Lost {
-				for floor := range N_floors {
-					for btn := range N_buttons - 1 {
-						setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
-					}
-				}
-			}
+			reassignOrdersFromDisconnectedElevators(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, p.Lost, activeElevators, selfId)
+			// reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
+			// for _, elev := range p.Lost {
+			// 	for floor := range N_floors {
+			// 		for btn := range N_buttons - 1 {
+			// 			setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
+			// 		}
+			// 	}
+			// }
 		}
 	}
 

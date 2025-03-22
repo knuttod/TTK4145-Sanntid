@@ -75,7 +75,10 @@ func OrderHandler(selfId string,
 					orderMerger(&assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 
 					// reassign orders if remote elevator have been obstructed or gotten a motorstop
-					reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
+					
+					//denne fjerner hall calls fra en heis som kobler seg på igjen
+					reassignOrdersFromUnavailable(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
+					// reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 				}
 			}
