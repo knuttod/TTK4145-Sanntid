@@ -4,6 +4,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"fmt"
+	"math"
 	// "fmt"
 	//"strconv"
 )
@@ -48,12 +49,15 @@ func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 		}
 		return
 	}
+
+	//High cost to ensure that the first elevator that is not obstructed or motorstop is chosen
 	minCost := 99999
-	//denne må endres på, oppdaterer local orders mappet, noe den ikke skal
+	
 	elevCost := 0
+
 	var minElev string
 	for _, elev := range activeElevators {
-		//temp
+
 		if (Elevators[elev].Elevator.Obstructed) || (Elevators[elev].Elevator.MotorStop) {
 			continue
 		}
@@ -62,6 +66,12 @@ func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 			return
 		}
 		elevCost = cost(Elevators[elev].Elevator, order)
+		//Adding distance to cost for differentate between elevators with same cost
+		distance := math.Abs(float64(Elevators[elev].Elevator.Floor) - float64(order.Floor))
+		elevCost +=int(distance) *3
+
+		
+		
 		if elevCost < minCost {
 			minCost = elevCost
 			minElev = elev
