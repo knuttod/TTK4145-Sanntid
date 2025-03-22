@@ -138,7 +138,7 @@ func runAsBackup(id string, port string, connection *net.UDPConn, backupPort str
 				fmt.Println("Primary failed, taking over as primary...")
 				go func() {
 					err := exec.Command("gnome-terminal", "--", "go", "run", "main.go",
-						"-id", id+"-backup", "-port", port).Run()
+						"-id", id, "-port", port).Run()
 					if err != nil {
 						log.Printf("Failed to spawn new backup: %v", err)
 					}
