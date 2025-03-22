@@ -169,10 +169,50 @@ func ClearAtCurrentFloor(e elevator.Elevator, completedOrderCH chan elevio.Butto
 					Floor: e.Floor,
 					Button: elevio.BT_HallDown,
 			}
+
+		// 	// Problemet ligger her for å cleare begge to samtidig
 		// case elevio.MD_Stop:
-		// 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
-		// 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
-		// 	e.LocalOrders[e.Floor][elevio.BT_Cab] = false
+		// 	fmt.Println("stop")
+		// 	pair := ChooseDirection(e)
+
+		// 	switch pair.Behaviour {
+			
+		// 	case elevator.EB_Moving:
+		// 		switch pair.Dirn {
+		// 		case elevio.MD_Down:
+		// 			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+		// 			completedOrderCH <- elevio.ButtonEvent{
+		// 				Floor: e.Floor,
+		// 				Button: elevio.BT_HallDown,
+		// 			}
+		// 		case elevio.MD_Up:
+		// 			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+		// 			completedOrderCH <- elevio.ButtonEvent{
+		// 				Floor: e.Floor,
+		// 				Button: elevio.BT_HallUp,
+		// 			}
+		// 		}
+
+		// 	default:
+		// 	//If an elevator gets two orders when idle or door open in a floor take order down before order up
+		// 	if e.LocalOrders[e.Floor][elevio.BT_HallDown] {
+		// 		e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+		// 		completedOrderCH <- elevio.ButtonEvent{
+		// 			Floor: e.Floor,
+		// 			Button: elevio.BT_HallDown,
+		// 		}
+		// 	} else {
+		// 		e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+		// 		completedOrderCH <- elevio.ButtonEvent{
+		// 			Floor: e.Floor,
+		// 			Button: elevio.BT_HallUp,
+		// 		}
+		// 	}
+
+		// 	}
+		// // 	e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
+		// // 	e.LocalOrders[e.Floor][elevio.BT_HallDown] = false
+		// // 	e.LocalOrders[e.Floor][elevio.BT_Cab] = false
 		default:
 			e.LocalOrders[e.Floor][elevio.BT_HallUp] = false
 			e.LocalOrders[e.Floor][elevio.BT_HallDown] = false

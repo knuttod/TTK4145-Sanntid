@@ -212,19 +212,20 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 		//kanskje dette gjør at ordre ikke blir reassigned? Teste dette
 		//tanken er at en ny heis ikke skal dø
 		if assignedOrdersKeysCheck(*Elevators, activeElevators, selfId) {
-			reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
-			for _, elev := range p.Lost {
-				for floor := range N_floors {
-					for btn := range N_buttons - 1 {
-						setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
-					}
-				}
-			}
+			reassignOrdersFromDisconnectedElevators(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, p.Lost, activeElevators, selfId)
+			// reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
+			// for _, elev := range p.Lost {
+			// 	for floor := range N_floors {
+			// 		for btn := range N_buttons - 1 {
+			// 			setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
+			// 		}
+			// 	}
+			// }
 		}
 	}
 
 
-	//if elevator has only disconnected it has its latest info about its order and to not override it having no order the order is set to complete
+	//if elevator(s) has only disconnected and reconnects it has its latest info about its order and to not override it having no order the order is set to complete
 	if len(p.New) > 0 {
 		for floor := range N_floors {
 			if (*assignedOrders)[selfId][floor][int(elevio.BT_Cab)] == elevator.Ordr_None {
@@ -235,6 +236,7 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 
 	//fikse clearing av hall orders etter tilkoblinkg på nettet
 
+	//tror denne gjør akkurat det samme som den to hakk over
 	//sets orders on all other elevators to unkwown, since information can not be trusted
 	if len(p.Peers) == 1 {
 		for id := range *assignedOrders {

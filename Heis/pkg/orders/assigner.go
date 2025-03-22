@@ -24,8 +24,56 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 						}
 						fmt.Println("reassign")
 						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
+						//unkown ac nettet
+						//complete ved obstruction eller motorstopp
 						setOrder(assignedOrders, elev.Elevator.Id, floor, btn, elevator.Ordr_Complete)
 					}
+				}
+			}
+		}
+	}
+}
+
+func reassignOrdersFromUnavailable(elevators map[string]elevator.NetworkElevator, assignedOrders *map[string][][]elevator.OrderState, activeElevators []string, selfId string) {
+
+	for _, elevId := range activeElevators {
+		elev := elevators[elevId].Elevator
+		if elev.MotorStop || elev.Obstructed {
+			orders := elevators[elevId].AssignedOrders[elevId]
+			for floor := range N_floors {
+				for btn := range (N_buttons - 1) {
+					if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
+					orders[floor][btn] == elevator.Ordr_Confirmed {
+						order := elevio.ButtonEvent{
+							Floor:  floor,
+							Button: elevio.ButtonType(btn),
+						}
+						fmt.Println("reassign from unavailable")
+						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
+						setOrder(assignedOrders, elevId, floor, btn, elevator.Ordr_Complete)
+					}
+				}
+			}
+		}
+	}
+
+}
+
+func reassignOrdersFromDisconnectedElevators(elevators map[string]elevator.NetworkElevator, assignedOrders *map[string][][]elevator.OrderState, lostElevators, activeElevators []string, selfId string) {
+
+	for _, elevId := range lostElevators {
+		orders := elevators[elevId].AssignedOrders[elevId]
+		for floor := range N_floors {
+			for btn := range (N_buttons - 1) {
+				if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
+					orders[floor][btn] == elevator.Ordr_Confirmed {
+						order := elevio.ButtonEvent{
+							Floor:  floor,
+							Button: elevio.ButtonType(btn),
+						}
+						fmt.Println("reassign from disconnect")
+						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
+						setOrder(assignedOrders, elevId, floor, btn, elevator.Ordr_Unknown)
 				}
 			}
 		}

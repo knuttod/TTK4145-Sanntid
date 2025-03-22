@@ -25,7 +25,7 @@ const timeout = 500 * time.Millisecond
 
 // Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
 // Keeps track of the conected elevators, and sends the elevatorstates on the elevatorStateCh to the order module, the ids are sent to main on the peerUpdate channel.
-func Transmitter(port int, id string, transmitEnable <-chan bool, nettworkDisconnectCh chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
+func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToRecivierSkipCh chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
@@ -70,14 +70,12 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, nettworkDiscon
 				// Send data
 				_, err = conn.WriteTo(data, addr)
 				if err != nil {
-					fmt.Println("Send error:", err)
-					fmt.Println("her")
-					select {
-					case nettworkDisconnectCh <- true:
-						// Update the networkElevator data
-					default:
-						// No update available, proceed with sending
-					}
+					// fmt.Println("Send error:", err)
+					// select {
+					// case nettworkDisconnectCh <- true:
+					// default:
+					// }
+					transmitterToRecivierSkipCh <- true
 					continue
 				}
 				if id == "heis1" {
@@ -91,7 +89,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, nettworkDiscon
 
 
 
-func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
+func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -117,15 +115,19 @@ func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorS
 		// 		// Channel is full, skipping send
 		// 	}
 		// } 
-
-		err := json.Unmarshal(buf[:n], &msg)
-		if err != nil {
-			// fmt.Println(err)
-			continue // Ignore invalid messages
+		select {
+		case <- transmitterToRecivierSkipCh:
+			msg.Id = selfId
+		default:
+			err := json.Unmarshal(buf[:n], &msg)
+			if err != nil {
+				// fmt.Println("rec err", err)
+				continue // Ignore invalid messages
+			}			
 		}
-		// fmt.Println("comp")
 
 		id := msg.Id // Extract peer ID
+		
 
 		// Track peer presence
 		p.New = ""

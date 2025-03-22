@@ -106,6 +106,12 @@ func runAsPrimary(id string, port string, backupPort string) {
 	// Launch main elevator system components as goroutines
 	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
 	go peers.Receiver(17135, id, peerUpdateCh, remoteElevatorCh)
+	transmitterToRecivierSkipCh := make(chan bool)
+
+
+	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+	go peers.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
+	
 	go fsm.Fsm(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	go orders.OrderHandler(id, localAssignedOrderCH, buttonPressCH, completedOrderCh,
 		remoteElevatorCh, peerUpdateCh, networkDisconnectCh, fsmToOrdersCH, ordersToPeersCH)

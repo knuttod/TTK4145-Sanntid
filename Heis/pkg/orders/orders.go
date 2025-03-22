@@ -74,14 +74,19 @@ func OrderHandler(selfId string,
 					// fmt.Println("merge")
 					orderMerger(&assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 
-					//reassign orders if remote elevator have been obstructed or gotten a motorstop
-					reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
+					// reassign orders if remote elevator have been obstructed or gotten a motorstop
+					
+					//denne fjerner hall calls fra en heis som kobler seg på igjen
+					reassignOrdersFromUnavailable(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
+					// reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 				}
 			}
 		case <- nettworkDisconnectCh:
 			//To make sure the for loops run even when not reciving remoteElevatorState from peers.reciever
+			fmt.Println("disconnected")
 			activeElevators = []string{selfId}
+			// reassignOrdersFromDisconnectedElevators()
 		}
 
 		//kanskje kjøre reassign orders her
@@ -89,19 +94,18 @@ func OrderHandler(selfId string,
 		// 	reassignOrders(Elevators, &assignedOrders, activeElevators, selfId)
 		// }
 
-		fmt.Println("tic")
-
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
-				for _, elev := range activeElevators {
-					// fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-					// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
-					if Elevators[elev].Elevator.Obstructed {
-						fmt.Println(elev, ": obstructed ", Elevators[elev].Elevator.Obstructed)
-					}
-					// fmt.Println(elev, ": motorstop ", Elevators[elev].Elevator.MotorStop)
-				}
+				// for _, elev := range activeElevators {
+				// 	for elev := range assignedOrders {
+				// 	fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+				// 	// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+				// 	if Elevators[elev].Elevator.Obstructed {
+				// 		fmt.Println(elev, ": obstructed ", Elevators[elev].Elevator.Obstructed)
+				// 	}
+				// 	// fmt.Println(elev, ": motorstop ", Elevators[elev].Elevator.MotorStop)
+				// }
 				// fmt.Println("Local: ", assignedOrders)
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)
