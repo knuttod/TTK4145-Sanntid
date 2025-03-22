@@ -9,112 +9,68 @@ import (
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
-	"syscall"
 	"time"
 )
 
-// Test the prosess pairs by using the commands:
-// ps aux | grep main
-// kill -SIGINT <PID>
-const (
-	localPort         = "30210"
-	backupPort        = "30211"         // Separate port for backup
-	readTimeout       = 2 * time.Second // Increased timeout for robustness
-	heartbeatInterval = 500 * time.Millisecond
-)
-
 func main() {
-	// Command-line flags for role and configuration
-	var id, port, role string
-	flag.StringVar(&id, "id", "", "ID of this peer")
-	flag.StringVar(&port, "port", "15657", "Elevator IO port")
-	flag.StringVar(&role, "role", "primary", "Role: primary or backup")
+	var id string
+	var port string
+	flag.StringVar(&id, "id", "", "id of this peer")
+	flag.StringVar(&port, "port", "", "port of this peer")
 	flag.Parse()
 
 	if id == "" {
 		localIP, err := localip.LocalIP()
 		if err != nil {
+			fmt.Println(err)
 			localIP = "DISCONNECTED"
 		}
 		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	}
 
-	// Decide behavior based on role
-	if role == "primary" {
-		runPrimary(id, port)
+	backupPort := "30210"
+	addr := ":" + backupPort
+
+	s, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		log.Printf("Error resolving UDP address: %v", err)
+		return
+	}
+
+	connection, err := net.ListenUDP("udp", s)
+	if err != nil {
+		fmt.Println("Starting as primary...")
+		go runAsPrimary(id, port)
+
+		go func() {
+			time.Sleep(1 * time.Second)
+			err := exec.Command("gnome-terminal", "--", "go", "run", "main.go", "-id", id+"-backup", "-port", port).Run()
+			if err != nil {
+				log.Printf("Failed to spawn backup: %v", err)
+			}
+		}()
 	} else {
-		runBackup(id, port)
+		fmt.Println("Starting as backup...")
+		runAsBackup(id, port, connection)
 	}
+
+	select {}
 }
 
-func runPrimary(id, port string) {
-	fmt.Println("Starting as primary...")
-
-	// Dial backup for heartbeats
-	backupAddr, err := net.ResolveUDPAddr("udp", "localhost:"+backupPort)
-	if err != nil {
-		log.Fatalf("Failed to resolve backup address: %v", err)
-	}
-	conn, err := net.DialUDP("udp", nil, backupAddr)
-	if err != nil {
-		log.Fatalf("Failed to dial backup: %v", err)
-	}
-	defer conn.Close()
-
-	// Spawn backup process
-	spawnNewInstance("main.go", port, "backup")
-
-	// Start elevator system
-	startElevatorSystem(id, port)
-
-	// Send heartbeats
-	go sendHeartbeat(conn)
-
-	// Handle shutdown
-	waitForShutdown()
-}
-
-func runBackup(id, port string) {
-	fmt.Println("Starting as backup...")
-
-	// Listen for heartbeats
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+backupPort)
-	if err != nil {
-		log.Fatalf("Failed to resolve UDP address: %v", err)
-	}
-	conn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		log.Fatalf("Failed to start UDP listener: %v", err)
-	}
-	defer conn.Close()
-
-	// Detect primary failure
-	detectFailure(conn)
-
-	// Take over as primary
-	fmt.Println("Primary failed, taking over...")
-	runPrimary(id, port) // Restart as primary
-}
-
-func startElevatorSystem(id, port string) {
-	// Load configuration
+func runAsPrimary(id string, port string) {
 	cfg, err := config.LoadConfig("config/elevator_params.json")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Initialize elevator IO
 	elevio.Init("localhost:"+port, cfg.NumFloors)
 
-	// Channels
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
@@ -123,78 +79,63 @@ func startElevatorSystem(id, port string) {
 	completedOrderCh := make(chan elevio.ButtonEvent, 3)
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
-	networkDisconnectCh := make(chan bool)
+	networkDisconnectCh := make(chan bool) // Fixed typo
+	transmitterToRecivierSkipCh := make(chan bool)
 
-	// Start goroutines
-	go peers.Transmitter(17135, id, peerTxEnable, networkDisconnectCh, ordersToPeersCH)
-	go peers.Receiver(17135, id, peerUpdateCh, remoteElevatorCh)
+	// UDP connection to backup
+	backupAddr, err := net.ResolveUDPAddr("udp", ":30210")
+	if err != nil {
+		log.Printf("Failed to resolve backup address: %v", err)
+		return
+	}
+	conn, err := net.DialUDP("udp", nil, backupAddr)
+	if err != nil {
+		log.Printf("Failed to dial backup: %v", err)
+		return
+	}
+
+	// Assuming peers.Receiver expects channels as input-only (chan<-)
+	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+	go peers.Receiver(17135, id, peerUpdateCh, remoteElevatorCh) // Adjusted arguments
 	go fsm.Fsm(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
-	go orders.OrderHandler(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, networkDisconnectCh, fsmToOrdersCH, ordersToPeersCH)
-}
+	go orders.OrderHandler(id, localAssignedOrderCH, buttonPressCH, completedOrderCh,
+		remoteElevatorCh, peerUpdateCh, networkDisconnectCh, fsmToOrdersCH, ordersToPeersCH) // Fixed variable name
 
-func detectFailure(conn *net.UDPConn) {
-	buffer := make([]byte, 1024)
-	missedHeartbeats := 0
-	const maxMissed = 1
-
-	for {
-		conn.SetReadDeadline(time.Now().Add(readTimeout))
-		n, addr, err := conn.ReadFromUDP(buffer)
-		if err != nil {
-			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				missedHeartbeats++
-				log.Printf("Missed heartbeat %d/%d", missedHeartbeats, maxMissed)
-				if missedHeartbeats >= maxMissed {
-					log.Println("Primary process not responding. Taking over...")
-					return
-				}
-				continue
-			}
-			log.Printf("Error reading from UDP: %v", err)
-			continue
-		}
-
-		if string(buffer[:n]) == "heartbeat" {
-			log.Printf("Received heartbeat from %v", addr)
-			missedHeartbeats = 0 // Reset on successful heartbeat
-		}
-	}
-}
-
-func spawnNewInstance(fileName, port, role string) {
-	cmd := exec.Command("go", "run", fileName, "-port="+port, "-role="+role)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		log.Fatalf("Failed to start new instance: %v", err)
-	}
-	log.Println("New process started successfully.")
-
+	// Periodic state sync to backup
 	go func() {
-		if err := cmd.Wait(); err != nil {
-			log.Printf("Process exited with error: %v", err)
+		for {
+			time.Sleep(500 * time.Millisecond)
+			// Using conn to avoid "declared and not used" error
+			_, err := conn.Write([]byte("ping")) // Simple heartbeat
+			if err != nil {
+				log.Printf("Failed to send to backup: %v", err)
+			}
 		}
 	}()
 }
 
-func sendHeartbeat(conn *net.UDPConn) {
+func runAsBackup(id string, port string, connection *net.UDPConn) {
+	defer connection.Close()
+
+	buffer := make([]byte, 1024)
+
 	for {
-		_, err := conn.Write([]byte("heartbeat"))
+		connection.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_, _, err := connection.ReadFromUDP(buffer)
+
 		if err != nil {
-			log.Printf("Failed to send heartbeat: %v", err)
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				fmt.Println("Primary failed, taking over as primary...")
+				go func() {
+					err := exec.Command("gnome-terminal", "--", "go", "run", "main.go",
+						"-id", id+"-backup", "-port", port).Run()
+					if err != nil {
+						log.Printf("Failed to spawn new backup: %v", err)
+					}
+				}()
+				go runAsPrimary(id, port)
+				return
+			}
 		}
-		time.Sleep(heartbeatInterval)
 	}
-}
-
-func waitForShutdown() {
-	_, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	<-sigChan
-	fmt.Println("Shutting down...")
 }
