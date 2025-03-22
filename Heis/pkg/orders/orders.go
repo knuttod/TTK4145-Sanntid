@@ -81,12 +81,15 @@ func OrderHandler(selfId string,
 			}
 		case <- nettworkDisconnectCh:
 			//To make sure the for loops run even when not reciving remoteElevatorState from peers.reciever
+			activeElevators = []string{selfId}
 		}
 
 		//kanskje kjøre reassign orders her
 		// if assignedOrdersKeysCheck(Elevators, activeElevators, selfId) && (len(activeElevators) > 1){
 		// 	reassignOrders(Elevators, &assignedOrders, activeElevators, selfId)
 		// }
+
+		fmt.Println("tic")
 
 		for floor := range N_floors {
 			for btn := range N_buttons {

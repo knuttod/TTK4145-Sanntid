@@ -72,7 +72,12 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, nettworkDiscon
 				if err != nil {
 					fmt.Println("Send error:", err)
 					fmt.Println("her")
-					nettworkDisconnectCh <- true
+					select {
+					case nettworkDisconnectCh <- true:
+						// Update the networkElevator data
+					default:
+						// No update available, proceed with sending
+					}
 					continue
 				}
 				if id == "heis1" {
