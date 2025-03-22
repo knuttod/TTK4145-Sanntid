@@ -71,6 +71,8 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersC
 				_, err = conn.WriteTo(data, addr)
 				if err != nil {
 					fmt.Println("Send error:", err)
+					fmt.Println("her")
+					nettworkDisconnectCh <- true
 					continue
 				}
 				if id == "heis1" {
@@ -101,15 +103,15 @@ func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorS
 		var msg msgTypes.ElevatorStateMsg
 
 		//Jalla løsning
-		if (len(p.Peers) == 1) && (p.Peers[0] == selfId) || (len(p.Peers) == 0) {
-			msg.Id = selfId
-			select {
-			case elevatorStateCh <- msg:
-				// Successfully sent to channel
-			default:
-				// Channel is full, skipping send
-			}
-		} 
+		// if (len(p.Peers) == 1) && (p.Peers[0] == selfId) || (len(p.Peers) == 0) {
+		// 	msg.Id = selfId
+		// 	select {
+		// 	case elevatorStateCh <- msg:
+		// 		// Successfully sent to channel
+		// 	default:
+		// 		// Channel is full, skipping send
+		// 	}
+		// } 
 
 		err := json.Unmarshal(buf[:n], &msg)
 		if err != nil {
