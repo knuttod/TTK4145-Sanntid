@@ -99,11 +99,24 @@ func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorS
 		n, _, _ := conn.ReadFrom(buf[0:])
 
 		var msg msgTypes.ElevatorStateMsg
+
+		//Jalla løsning
+		if (len(p.Peers) == 1) && (p.Peers[0] == selfId) {
+			msg.Id = selfId
+			select {
+			case elevatorStateCh <- msg:
+				// Successfully sent to channel
+			default:
+				// Channel is full, skipping send
+			}
+		} 
+
 		err := json.Unmarshal(buf[:n], &msg)
 		if err != nil {
-			// fmt.Println("err")
+			// fmt.Println(err)
 			continue // Ignore invalid messages
 		}
+		// fmt.Println("comp")
 
 		id := msg.Id // Extract peer ID
 
