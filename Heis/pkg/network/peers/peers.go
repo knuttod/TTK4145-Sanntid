@@ -101,7 +101,7 @@ func Receiver(port int, selfId string, peerUpdateCh chan<- PeerUpdate, elevatorS
 		var msg msgTypes.ElevatorStateMsg
 
 		//Jalla løsning
-		if (len(p.Peers) == 1) && (p.Peers[0] == selfId) {
+		if (len(p.Peers) == 1) && (p.Peers[0] == selfId) || (len(p.Peers) == 0) {
 			msg.Id = selfId
 			select {
 			case elevatorStateCh <- msg:
