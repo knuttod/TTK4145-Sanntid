@@ -71,7 +71,6 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, nettworkDiscon
 				_, err = conn.WriteTo(data, addr)
 				if err != nil {
 					fmt.Println("Send error:", err)
-					fmt.Println("her")
 					select {
 					case nettworkDisconnectCh <- true:
 						// Update the networkElevator data

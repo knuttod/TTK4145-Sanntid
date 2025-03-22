@@ -74,7 +74,7 @@ func OrderHandler(selfId string,
 					// fmt.Println("merge")
 					orderMerger(&assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 
-					//reassign orders if remote elevator have been obstructed or gotten a motorstop
+					// reassign orders if remote elevator have been obstructed or gotten a motorstop
 					reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 				}
@@ -89,19 +89,18 @@ func OrderHandler(selfId string,
 		// 	reassignOrders(Elevators, &assignedOrders, activeElevators, selfId)
 		// }
 
-		fmt.Println("tic")
-
 		for floor := range N_floors {
 			for btn := range N_buttons {
 				// fmt.Println("Active: ", activeElevators)
-				for _, elev := range activeElevators {
-					fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
-					// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
-					if Elevators[elev].Elevator.Obstructed {
-						fmt.Println(elev, ": obstructed ", Elevators[elev].Elevator.Obstructed)
-					}
-					// fmt.Println(elev, ": motorstop ", Elevators[elev].Elevator.MotorStop)
-				}
+				// for _, elev := range activeElevators {
+				// 	for elev := range assignedOrders {
+				// 	fmt.Println(elev, ":", Elevators[elev].AssignedOrders)
+				// 	// fmt.Println(elev, ":", Elevators[elev].Elevator.Floor)
+				// 	if Elevators[elev].Elevator.Obstructed {
+				// 		fmt.Println(elev, ": obstructed ", Elevators[elev].Elevator.Obstructed)
+				// 	}
+				// 	// fmt.Println(elev, ": motorstop ", Elevators[elev].Elevator.MotorStop)
+				// }
 				// fmt.Println("Local: ", assignedOrders)
 				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
 				// fmt.Println("own: ", Elevators[selfId].Elevator.LocalOrders)

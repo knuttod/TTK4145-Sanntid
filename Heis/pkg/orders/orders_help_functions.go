@@ -235,6 +235,7 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 
 	//fikse clearing av hall orders etter tilkoblinkg på nettet
 
+	//tror denne gjør akkurat det samme som den to hakk over
 	//sets orders on all other elevators to unkwown, since information can not be trusted
 	if len(p.Peers) == 1 {
 		for id := range *assignedOrders {
