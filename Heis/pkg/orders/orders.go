@@ -27,7 +27,7 @@ const N_buttons = 3
 // Also checks if an order to be done by this elevator should be started or not
 func OrderHandler(selfId string,
 	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan elevio.ButtonEvent,
-	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
+	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate, nettworkDisconnectCh chan bool,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
 	assignedOrders := AssignedOrdersInit(selfId)

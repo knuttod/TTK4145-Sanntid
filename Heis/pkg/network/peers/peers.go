@@ -25,7 +25,7 @@ const timeout = 500 * time.Millisecond
 
 // Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
 // Keeps track of the conected elevators, and sends the elevatorstates on the elevatorStateCh to the order module, the ids are sent to main on the peerUpdate channel.
-func Transmitter(port int, id string, transmitEnable <-chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
+func Transmitter(port int, id string, transmitEnable <-chan bool, nettworkDisconnectCh chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
