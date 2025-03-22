@@ -223,6 +223,14 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 		}
 	}
 
+	if len(p.New) > 0 {
+		for floor := range N_floors {
+			if (*assignedOrders)[selfId][floor][int(elevio.BT_Cab)] == elevator.Ordr_None {
+				setOrder(assignedOrders, selfId, floor, int(elevio.BT_Cab), elevator.Ordr_Complete)
+			}
+		}
+	}
+
 	//sets orders on all other elevators to unkwown, since information can not be trusted
 	if len(p.Peers) == 1 {
 		for id := range *assignedOrders {
