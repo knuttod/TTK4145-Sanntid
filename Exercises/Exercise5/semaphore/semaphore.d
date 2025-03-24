@@ -8,6 +8,7 @@ immutable Duration tick = 33.msecs;
 /* 
 You will implement the functionality for `allocate` and `deallocate`.
 
+
 Documentation:
 Semaphore:
     https://dlang.org/phobos/core_sync_semaphore.html
@@ -38,7 +39,6 @@ class Resource(T) {
             numWaiting[priority]++;
             mtx.notify();
             sems[priority].wait();
-            mtx.wait();
             numWaiting[priority]--;
 
         }
@@ -50,9 +50,9 @@ class Resource(T) {
     void deallocate(T v){
         mtx.wait();
         busy = false;
-        if(numWaiting[1] < 0) {
+        if(numWaiting[1] > 0) {
             sems[1].notify();
-        } else if(numWaiting[0] < 0) {
+        } else if(numWaiting[0] > 0) {
             sems[0].notify();
         } else {
             mtx.notify();
