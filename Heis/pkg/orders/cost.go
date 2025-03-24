@@ -22,9 +22,9 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 
 		switch elev.Behaviour {
 		case elevator.EB_Idle:
-			pair := fsm.ChooseDirection(elev)
-			elev.Dirn = pair.Dirn
-			elev.Behaviour = pair.Behaviour
+			directionAndBehaviour := fsm.ChooseDirection(elev)
+			elev.Dirn = directionAndBehaviour.Dirn
+			elev.Behaviour = directionAndBehaviour.Behaviour
 			if elev.Dirn == elevio.MD_Stop {
 				return duration //Dersom EB_IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
 
@@ -33,9 +33,9 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 			duration += TRAVEL_TIME / 2 //dersom heisen er i beveglse legger vi til en kostand
 			elev.Floor += int(elev.Dirn)
 		case elevator.EB_DoorOpen:
-			duration -= int(elev.Config.DoorOpenDuration_s)
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
 			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
+			duration -= int(elev.Config.DoorOpenDuration_s)
 
 		}
 		for duration < 999 {
@@ -47,9 +47,9 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 				elev = costClearAtCurrentFloor(elev)
 				duration += int(elev.Config.DoorOpenDuration_s)
 				// might not need this?
-				pair := fsm.ChooseDirection(elev)
-				elev.Dirn = pair.Dirn
-				elev.Behaviour = pair.Behaviour
+				directionAndBehaviour := fsm.ChooseDirection(elev)
+				elev.Dirn = directionAndBehaviour.Dirn
+				elev.Behaviour = directionAndBehaviour.Behaviour
 				// ...
 				if elev.Dirn == elevio.MD_Stop {
 					return duration //returner duration når den simulerte heisen har kommet til en stopp
@@ -58,7 +58,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 			elev.Floor += int(elev.Dirn) //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
 			duration += TRAVEL_TIME      //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
-		return 999
+		//		return 999
 
 	}
 	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
