@@ -9,16 +9,16 @@ import (
 func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimerEndCh chan bool) {
 	//doorOpenTime is expected to be in seconds
 
-	timeoutInterval := time.Duration(doorOpenTime) * time.Second
+	// timeoutInterval := time.Duration(doorOpenTime) * time.Second
 
 	for {
 		select {
 		case <-doorTimerStartCh:
-			timer := time.NewTimer(timeoutInterval)
+			timer := time.NewTimer(doorOpenTime)
 			for {
 				select {
 				case <-doorTimerStartCh:
-					timer.Reset(timeoutInterval)
+					timer.Reset(doorOpenTime)
 
 				case <-timer.C:
 					doorTimerEndCh <- true
@@ -45,7 +45,7 @@ func motorStopTimer(motorStopTimeoutTime time.Duration, arrivedOnFloorCh, depart
 			}
 
 		case <-timer.C:
-			departureFromFloorCh <- true
+			motorStopCh <- true
 		}
 	}
 }

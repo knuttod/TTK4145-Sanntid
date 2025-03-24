@@ -65,6 +65,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	// fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 
 	for {
+		fmt.Println("tic")
 		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
@@ -74,12 +75,12 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
-			// fmt.Println("ordr press")
-			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, arrivedOnFloorCh, completedOrderCH)
-
+			fmt.Println("ordr press")
+			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
+			fmt.Println("ord req")
 		case current_floor := <-drvFloorsCh:
+			fmt.Printf("drvFloorsCh: %v", current_floor)
 			floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
-			// fmt.Printf("drvFloorsCh: %v", current_floor)
 		case obstruction := <-drvObstrCh:
 			// fmt.Println("obstr")
 			if obstruction {
