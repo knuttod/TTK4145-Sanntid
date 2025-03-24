@@ -22,7 +22,6 @@ func initBetweenFloors(e *elevator.Elevator) {
 // the request state accordingly. The function also manages the door timer, sends updated
 // elevator states over UDP, and updates the button lights.
 func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
-
 	switch (*e).Behaviour {
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately((*e), btn_floor, btn_type) {
@@ -50,6 +49,13 @@ func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.But
 			elevio.SetDoorOpenLamp(true)
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
 			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
+
+			// To make sure both hall call up and down are not cleared when an elevator has no orders and gets both calls in the floor it is currently at
+			if btn_type == elevio.BT_HallUp {
+				(*e).Dirn = elevio.MD_Up
+			} else if btn_type == elevio.BT_HallDown {
+				(*e).Dirn = elevio.MD_Down
+			}
 
 		case elevator.EB_Moving:
 			elevio.SetMotorDirection((*e).Dirn)
@@ -116,7 +122,6 @@ func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, floorArrivalC
 		switch (*e).Behaviour {
 		case elevator.EB_DoorOpen:
 			drv_doorTimer <- (*e).Config.DoorOpenDuration_s //????
-			//drv_doorTimer <- 0.0
 			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
 			setCabLights(e)
 

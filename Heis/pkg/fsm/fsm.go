@@ -59,10 +59,9 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 		elevio.SetFloorIndicator(floor)
 	}
 
-	// fmt.Println("startFloor: ",elev.Floor)
 
-	//trenger kanskje ikke denne
-	fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
+	// //trenger kanskje ikke denne?
+	// fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 
 	for {
 		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)

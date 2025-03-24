@@ -111,7 +111,7 @@ func ShouldClearImmediately(e elevator.Elevator, btn_floor int, btn_type elevio.
 			return false
 		}
 	case elevator.CV_InDirn:
-		if e.Floor == btn_floor && ((e.Dirn == elevio.MD_Up && btn_type == elevio.BT_HallUp) ||
+		if (e.Floor == btn_floor) && ((e.Dirn == elevio.MD_Up && btn_type == elevio.BT_HallUp) ||
 			(e.Dirn == elevio.MD_Down && btn_type == elevio.BT_HallDown) ||
 			(e.Dirn == elevio.MD_Stop) || (btn_type == elevio.BT_Cab)) {
 			return true
