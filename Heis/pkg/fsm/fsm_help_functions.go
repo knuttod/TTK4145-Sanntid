@@ -98,6 +98,7 @@ func floorArrival(elev *elevator.Elevator, newFloor int, doorTimerStartCh, arriv
 			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
 			setCabLights(elev)
 			(*elev).Behaviour = elevator.EB_DoorOpen
+			// (*elev).Dirn = elevio.MD_Stop
 		} else {
 			departureFromFloorCh <- true
 
@@ -114,10 +115,10 @@ func DoorTimeout(elev *elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, de
 
 	switch (*elev).Behaviour {
 	case elevator.EB_DoorOpen:
+		// fmt.Println("orders:",(*elev).LocalOrders)
 		var directionAndBehaviour elevator.DirnBehaviourPair = ChooseDirection((*elev))
 		(*elev).Dirn = directionAndBehaviour.Dirn
 		(*elev).Behaviour = directionAndBehaviour.Behaviour
-
 		switch (*elev).Behaviour {
 		case elevator.EB_DoorOpen:
 			doorTimerStartCh <- true //????

@@ -136,13 +136,13 @@ func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.Bu
 		elev = clearLocalOrder(elev, elev.Floor, elevio.BT_Cab, completedOrderCH)
 		switch elev.Dirn {
 		case elevio.MD_Up:
-			if (!Above(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) {
+			if (!Above(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) {
 				elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)
 			}
 			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
 
 		case elevio.MD_Down:
-			if (!Below(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) {
+			if (!Below(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) {
 				elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
 			}
 			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)

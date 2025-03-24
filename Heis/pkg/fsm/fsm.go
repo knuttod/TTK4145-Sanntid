@@ -54,7 +54,13 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	if floor == -1 {
 		initBetweenFloors(&elev)
 		current_floor := <-drvFloorsCh
-		floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+		elevio.SetMotorDirection(elevio.MD_Stop)
+		elev.Floor = current_floor
+		elevio.SetFloorIndicator(current_floor)
+		elev.Dirn = elevio.MD_Stop
+		elev.Behaviour = elevator.EB_Idle
+
+		// floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 	} else {
 		elev.Floor = floor
 		elevio.SetFloorIndicator(floor)
@@ -65,7 +71,6 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	// fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 
 	for {
-		fmt.Println("tic")
 		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
@@ -75,14 +80,10 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
-			fmt.Println("ordr press")
 			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
-			fmt.Println("ord req")
 		case current_floor := <-drvFloorsCh:
-			fmt.Printf("drvFloorsCh: %v", current_floor)
 			floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 		case obstruction := <-drvObstrCh:
-			// fmt.Println("obstr")
 			if obstruction {
 				elev.Obstructed = true
 				//remove hall orders since other elevators (this elevator if it is the only one on the nettwork) takes over from this

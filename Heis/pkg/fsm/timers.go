@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	// "fmt"
 	"time"
 )
 
@@ -10,23 +11,31 @@ func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimer
 	//doorOpenTime is expected to be in seconds
 
 	// timeoutInterval := time.Duration(doorOpenTime) * time.Second
-
+	timer := time.NewTimer(doorOpenTime)
 	for {
 		select {
-		case <-doorTimerStartCh:
-			timer := time.NewTimer(doorOpenTime)
-			for {
-				select {
-				case <-doorTimerStartCh:
-					timer.Reset(doorOpenTime)
-
-				case <-timer.C:
-					doorTimerEndCh <- true
-					break
-				}
-			}
+		case <- doorTimerStartCh:
+			timer.Reset(doorOpenTime)
+		case <-timer.C:
+			doorTimerEndCh <- true
 		}
 	}
+	// for {
+	// 	select {
+	// 	case <-doorTimerStartCh:
+	// 		timer := time.NewTimer(doorOpenTime)
+	// 		for {
+	// 			select {
+	// 			case <-doorTimerStartCh:
+	// 				timer.Reset(doorOpenTime)
+
+	// 			case <-timer.C:
+	// 				doorTimerEndCh <- true
+	// 				break
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 func motorStopTimer(motorStopTimeoutTime time.Duration, arrivedOnFloorCh, departureFromFloorCh, motorStopCh chan bool) {
