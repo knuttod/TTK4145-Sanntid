@@ -58,7 +58,7 @@ func main() {
 
 	localAssignedOrderCH := make(chan elevio.ButtonEvent) //might need buffer
 	buttonPressCH := make(chan elevio.ButtonEvent) //might need buffer
-	completedOrderCh := make(chan elevio.ButtonEvent, 1) //can clear up to 3 orders at a time
+	completedOrderCh := make(chan elevio.ButtonEvent)// should not need to have buffer
 
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
