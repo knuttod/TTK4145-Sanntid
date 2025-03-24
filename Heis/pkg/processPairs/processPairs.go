@@ -10,6 +10,7 @@ import (
 	"Heis/pkg/orders"
 	"log"
 	"net"
+	"os/exec"
 	"time"
 )
 
@@ -70,4 +71,53 @@ func BackupSetup(id string, port string, connection *net.UDPConn, backupPort str
 			}
 		}
 	}
+}
+
+// SetupUDPListener attempts to create a UDP listener to determine role
+func SetupUDPListener(backupPort string) (*net.UDPConn, error) {
+	addr := ":" + backupPort
+	s, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		log.Printf("Error resolving UDP address: %v", err)
+		return nil, err
+	}
+	return net.ListenUDP("udp", s)
+}
+
+// StartPrimaryProcess initializes the primary process with UDP connection
+func StartPrimaryProcess(id, port, backupPort string) {
+	backupAddr, err := net.ResolveUDPAddr("udp", ":"+backupPort)
+	if err != nil {
+		log.Printf("Failed to resolve backup address: %v", err)
+		return
+	}
+	conn, err := net.DialUDP("udp", nil, backupAddr)
+	if err != nil {
+		log.Printf("Failed to dial backup: %v", err)
+		return
+	}
+	PrimarySetup(id, port, backupPort, conn)
+}
+
+// SpawnBackupProcess launches the backup process in a new terminal
+func SpawnBackupProcess(id, port string) {
+	time.Sleep(1 * time.Second)
+	err := exec.Command("gnome-terminal", "--", "go", "run", "main.go",
+		"-id", id+"-backup", "-port", port).Run()
+	if err != nil {
+		log.Printf("Failed to spawn backup: %v", err)
+	}
+}
+
+// MonitorAndTakeOver handles backup taking over as primary when needed
+func MonitorAndTakeOver(id, port string, connection *net.UDPConn, backupPort string) {
+	BackupSetup(id, port, connection, backupPort)
+	go func() {
+		err := exec.Command("gnome-terminal", "--", "go", "run", "main.go",
+			"-id", id, "-port", port).Run()
+		if err != nil {
+			log.Printf("Failed to spawn new backup: %v", err)
+		}
+	}()
+	go StartPrimaryProcess(id, port, backupPort)
 }
