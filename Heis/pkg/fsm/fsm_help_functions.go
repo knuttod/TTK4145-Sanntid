@@ -10,10 +10,10 @@ import (
 
 // When initialising between floors, the motor direction is set downwards.
 // When it reaches a floor it will then behave normaly.
-func initBetweenFloors(e *elevator.Elevator) {
+func initBetweenFloors(elev *elevator.Elevator) {
 	elevio.SetMotorDirection(elevio.MD_Down)
-	(*e).Dirn = elevio.MD_Down
-	(*e).Behaviour = elevator.EB_Moving
+	(*elev).Dirn = elevio.MD_Down
+	(*elev).Behaviour = elevator.EB_Moving
 }
 
 // Handles button presses on a local level, by processing requests based on the
@@ -21,86 +21,84 @@ func initBetweenFloors(e *elevator.Elevator) {
 // (moving or opening doors). If the elevator is moving or has doors open, it updates
 // the request state accordingly. The function also manages the door timer, sends updated
 // elevator states over UDP, and updates the button lights.
-func requestButtonPress(e *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
-	switch (*e).Behaviour {
+func requestButtonPress(elev *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, doorTimerStartCh chan bool, arrivedOnFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
+	switch (*elev).Behaviour {
 	case elevator.EB_DoorOpen:
-		if ShouldClearImmediately((*e), btn_floor, btn_type) {
-			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
+		if ShouldClearImmediately((*elev), btn_floor, btn_type) {
 			// send clear to assigned orders
-			completedOrderCH <- elevio.ButtonEvent{
-				Floor:  btn_floor,
-				Button: btn_type,
-			}
+			*elev = clearLocalOrder(*elev, btn_floor, btn_type, completedOrderCH)
+			doorTimerStartCh <-true
 		} else {
-			(*e).LocalOrders[btn_floor][btn_type] = true
+			*elev = setLocalOrder(*elev, btn_floor, btn_type)
+			// (*elev).LocalOrders[btn_floor][btn_type] = true
 		}
 
 	case elevator.EB_Moving:
-		(*e).LocalOrders[btn_floor][btn_type] = true
+		*elev = setLocalOrder(*elev, btn_floor, btn_type)
+		// (*elev).LocalOrders[btn_floor][btn_type] = true
 
 	case elevator.EB_Idle:
-		(*e).LocalOrders[btn_floor][btn_type] = true
-		var pair elevator.DirnBehaviourPair = ChooseDirection((*e))
-		(*e).Dirn = pair.Dirn
-		(*e).Behaviour = pair.Behaviour
+		*elev = setLocalOrder(*elev, btn_floor, btn_type)
+		// (*elev).LocalOrders[btn_floor][btn_type] = true
+		var pair elevator.DirnBehaviourPair = ChooseDirection((*elev))
+		(*elev).Dirn = pair.Dirn
+		(*elev).Behaviour = pair.Behaviour
 
 		switch pair.Behaviour {
 		case elevator.EB_DoorOpen:
+			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
 			elevio.SetDoorOpenLamp(true)
-			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
+			doorTimerStartCh <- true
 
 			// To make sure both hall call up and down are not cleared when an elevator has no orders and gets both calls in the floor it is currently at
 			if btn_type == elevio.BT_HallUp {
-				(*e).Dirn = elevio.MD_Up
+				(*elev).Dirn = elevio.MD_Up
 			} else if btn_type == elevio.BT_HallDown {
-				(*e).Dirn = elevio.MD_Down
+				(*elev).Dirn = elevio.MD_Down
 			}
 
 		case elevator.EB_Moving:
-			elevio.SetMotorDirection((*e).Dirn)
-			//clear something at this floor??
-
-			motorTimoutStartCh <- true
+			elevio.SetMotorDirection((*elev).Dirn)
+			arrivedOnFloorCh <- true
 
 		case elevator.EB_Idle:
-			//need something here?
+			//nothing should be done
 		}
 
 	}
-	setCabLights(e)
+	setCabLights(elev)
 }
 
 // When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
 // to stop. if it is supposed to stop it stops, clears the floor then opens the door.
-func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
+func floorArrival(elev *elevator.Elevator, newFloor int, doorTimerStartCh chan bool, floorArrivalCh, arrivedOnFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
 
-	(*e).Floor = newFloor
-	elevio.SetFloorIndicator((*e).Floor)
+	(*elev).Floor = newFloor
+	elevio.SetFloorIndicator((*elev).Floor)
 
-	if !(*e).MotorStop {
+	if !(*elev).MotorStop {
 		select {
 		case floorArrivalCh <- true:
 		default:
 		}
 
 	}
-	if (*e).MotorStop {
+	if (*elev).MotorStop {
 		fmt.Println("power back")
-		(*e).MotorStop = false
+		(*elev).MotorStop = false
 	}
 
-	switch (*e).Behaviour {
+	switch (*elev).Behaviour {
 	case elevator.EB_Moving:
-		if ShouldStop((*e)) {
+		if ShouldStop((*elev)) {
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
-			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
-			drv_doorTimer <- (*e).Config.DoorOpenDuration_s
-			setCabLights(e)
-			(*e).Behaviour = elevator.EB_DoorOpen
+			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
+			doorTimerStartCh <- true
+			setCabLights(elev)
+			(*elev).Behaviour = elevator.EB_DoorOpen
 		} else {
-			motorTimoutStartCh <- true
+			arrivedOnFloorCh <- true
 
 		}
 	}
@@ -111,56 +109,51 @@ func floorArrival(e *elevator.Elevator, newFloor int, drv_doorTimer chan float64
 // runned twice, once at the begining of the timer initialisation and
 // once when the door is supposed to close to check if the obstruction
 // is active.
-func DoorTimeout(e *elevator.Elevator, drv_doorTimer chan float64, floorArrivalCh, motorTimoutStartCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
+func DoorTimeout(elev *elevator.Elevator, doorTimerStartCh chan bool, floorArrivalCh, arrivedOnFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
 
-	switch (*e).Behaviour {
+	switch (*elev).Behaviour {
 	case elevator.EB_DoorOpen:
-		var pair elevator.DirnBehaviourPair = ChooseDirection((*e))
-		(*e).Dirn = pair.Dirn
-		(*e).Behaviour = pair.Behaviour
+		var pair elevator.DirnBehaviourPair = ChooseDirection((*elev))
+		(*elev).Dirn = pair.Dirn
+		(*elev).Behaviour = pair.Behaviour
 
-		switch (*e).Behaviour {
+		switch (*elev).Behaviour {
 		case elevator.EB_DoorOpen:
-			drv_doorTimer <- (*e).Config.DoorOpenDuration_s //????
-			(*e).LocalOrders = ClearAtCurrentFloor((*e), completedOrderCH).LocalOrders
-			setCabLights(e)
+			doorTimerStartCh <- true //????
+			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
+			setCabLights(elev)
 
 		//lagt inn selv
 		case elevator.EB_Moving:
 			elevio.SetDoorOpenLamp(false)
-			elevio.SetMotorDirection((*e).Dirn)
-			motorTimoutStartCh <- true
+			elevio.SetMotorDirection((*elev).Dirn)
+			arrivedOnFloorCh <- true
 		//
 
 		case elevator.EB_Idle:
 			elevio.SetDoorOpenLamp(false)
-			elevio.SetMotorDirection((*e).Dirn)
+			elevio.SetMotorDirection((*elev).Dirn)
 
 		}
 	}
 }
 
-// Updates the elevator's button lights to reflect the current request states.
-// Turns on lights for active LocalOrders and turns them off otherwise.
-func setCabLights(e *elevator.Elevator) {
-	//set ligths
+func setCabLights(elev *elevator.Elevator) {
 	for floor := 0; floor < N_floors; floor++ {
-		// for btn := 0; btn < N_buttons; btn++ {
 		btn := int(elevio.BT_Cab)
-		if e.LocalOrders[floor][btn] {
+		if elev.LocalOrders[floor][btn] {
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
 		} else {
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 		}
-		// }
 	}
 }
 
-func clearLocalHallOrders(e elevator.Elevator) elevator.Elevator {
+func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
 	for floor := range N_floors {
 		for btn := range (N_buttons-1) {
-			e.LocalOrders[floor][btn] = false
+			elev.LocalOrders[floor][btn] = false
 		}
 	}
-	return e
+	return elev
 }

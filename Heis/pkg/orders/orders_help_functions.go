@@ -4,7 +4,7 @@ import (
 	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/msgTypes"
+	"Heis/pkg/network/msgTypes"
 	"Heis/pkg/network/peers"
 	// "fmt"
 	// "reflect"

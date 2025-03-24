@@ -3,7 +3,7 @@ package orders
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/msgTypes"
+	"Heis/pkg/network/msgTypes"
 	"Heis/pkg/network/peers"
 
 	// "Heis/pkg/timer"

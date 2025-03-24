@@ -4,8 +4,8 @@ import (
 	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/timer"
 	"fmt"
+	"time"
 	// "fmt"
 )
 
@@ -22,11 +22,11 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	drvObstrCh := make(chan bool)
 	drvStopCh := make(chan bool)
 
-	doorTimerStartCh := make(chan float64)
+	doorTimerStartCh := make(chan bool)
 	doorTimerFinishedCh := make(chan bool)
 
-	floorArrivalCh := make(chan bool)
-	motorTimoutStartCh := make(chan bool)
+	arrivedOnFloorCh := make(chan bool)
+	departureFromFloorCh := make(chan bool)
 	motorStopCh := make(chan bool)
 
 	go elevio.PollButtons(drvButtonsCh)
@@ -34,10 +34,11 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	go elevio.PollObstructionSwitch(drvObstrCh)
 	go elevio.PollStopButton(drvStopCh) //kanskje implementere stop?
 
-	//denne bør ha annet navn
-	go timer.Timer(doorTimerStartCh, doorTimerFinishedCh)
+	doorTimerInterval := 3 * time.Second
+	motorStopTimeout := 3900 * time.Millisecond
 
-	go timer.MotorStopTimer(floorArrivalCh, motorTimoutStartCh, motorStopCh)
+	go doorTimer(doorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
+	go motorStopTimer(motorStopTimeout, arrivedOnFloorCh, departureFromFloorCh, motorStopCh)
 
 	elev := elevator.Elevator_init(N_floors, N_buttons, id)
 
@@ -53,7 +54,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	if floor == -1 {
 		initBetweenFloors(&elev)
 		current_floor := <-drvFloorsCh
-		floorArrival(&elev, current_floor, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
+		floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 	} else {
 		elev.Floor = floor
 		elevio.SetFloorIndicator(floor)
@@ -74,38 +75,31 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
 			// fmt.Println("ordr press")
-			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
+			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, arrivedOnFloorCh, completedOrderCH)
 
 		case current_floor := <-drvFloorsCh:
-			floorArrival(&elev, current_floor, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
+			floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 			// fmt.Printf("drvFloorsCh: %v", current_floor)
 		case obstruction := <-drvObstrCh:
 			// fmt.Println("obstr")
 			if obstruction {
-				//clear local orders
-
 				elev.Obstructed = true
-				elev = clearLocalHallOrders(elev)
+				//remove hall orders since other elevators (this elevator if it is the only one on the nettwork) takes over from this
+				elev = removeLocalHallOrders(elev)
 				fmt.Println("Obstruction switch activated")
-				// (*elev).Behaviour = elevator.EB_Unavailable
 			} else {
 				elev.Obstructed = false
-				// (*elev).Behaviour = elevator.EB_DoorOpen
-				doorTimerStartCh <- elev.Config.DoorOpenDuration_s
+				doorTimerStartCh <- true
 			}
 		case <-motorStopCh:
 			fmt.Println("motorstop")
 			elev.MotorStop = true
-			elev = clearLocalHallOrders(elev)
+			elev = removeLocalHallOrders(elev)
 
 		case <-doorTimerFinishedCh:
 			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {
-				DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
-				// fmt.Println("drv_doortimer timed out")
-				// DoorTimeout(&elev, doorTimerStartCh, floorArrivalCh, motorTimoutStartCh, completedOrderCH)
+				DoorTimeout(&elev, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 			}
-			// default:
-			//non blocking
 		}
 	}
 }

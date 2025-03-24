@@ -5,7 +5,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
-	"Heis/pkg/msgTypes"
+	"Heis/pkg/network/msgTypes"
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
