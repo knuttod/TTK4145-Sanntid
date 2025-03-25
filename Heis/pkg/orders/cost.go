@@ -7,7 +7,7 @@ import (
 	// "fmt"
 )
 
-func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
+func cost(e elevator.Elevator) int {
 	if elevator.ElevatorBehaviour(e.Behaviour) != elevator.EB_Unavailable {
 
 		duration := 0

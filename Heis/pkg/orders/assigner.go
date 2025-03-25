@@ -113,7 +113,7 @@ func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 		// if (*AssignedOrders)[elev][order.Floor][order.Button] == elevator.Ordr_Confirmed {
 		// 	return
 		// }
-		elevCost = cost(Elevators[elev].Elevator, order)
+		elevCost = cost(Elevators[elev].Elevator)
 		//Adding distance to cost for differentate between elevators with same cost
 		distance := math.Abs(float64(Elevators[elev].Elevator.Floor) - float64(order.Floor))
 		elevCost += int(distance) * 3
