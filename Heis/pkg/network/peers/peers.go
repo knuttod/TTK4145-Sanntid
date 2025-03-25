@@ -2,8 +2,10 @@ package peers
 
 import (
 	"Heis/pkg/elevator"
-	"Heis/pkg/msgTypes"
+	// "Heis/pkg/nettwork/msgTypes"
 	"Heis/pkg/network/conn"
+	"Heis/pkg/network/msgTypes"
+
 
 	// "Heis/pkg/orders"
 	"encoding/json"
@@ -12,6 +14,9 @@ import (
 	"sort"
 	"time"
 )
+
+
+//denne modulen bør ryddes og få nytt navn
 
 type PeerUpdate struct {
 	Peers []string
