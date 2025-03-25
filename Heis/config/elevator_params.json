@@ -3,9 +3,5 @@
     "N_buttons": 3,
     "TravelTime" : 10,
     "DoorOpenDuration": 3,
-    "StateUpdatePeriodMs": 500,
-    "ElevatorStuckToleranceSec": 5,
-    "ReconnectTimerSec": 3,
-    "LocalElevator": 0,
     "motorStopTimeout" : 3900
 }

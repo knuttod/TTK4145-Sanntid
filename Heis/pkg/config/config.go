@@ -9,15 +9,11 @@ import (
 
 // Config defines the structure of the configuration
 type Config struct {
-	N_floors                  int           `json:"N_floors"`
-	N_buttons                 int           `json:"N_buttons"`
-	TravelTime                int           `json:"TravelTime"`
-	DoorOpenDuration          time.Duration `json:"DoorOpenDuration"`
-	StateUpdatePeriodMs       int           `json:"StateUpdatePeriodMs"`
-	ElevatorStuckToleranceSec int           `json:"ElevatorStuckToleranceSec"`
-	ReconnectTimerSec         int           `json:"ReconnectTimerSec"`
-	LocalElevator             int           `json:"LocalElevator"`
-	MotorStopTimeout          time.Duration `json:"motorStopTimeout"`
+	N_floors         int           `json:"N_floors"`
+	N_buttons        int           `json:"N_buttons"`
+	TravelTime       int           `json:"TravelTime"`
+	DoorOpenDuration time.Duration `json:"DoorOpenDuration"`
+	MotorStopTimeout time.Duration `json:"motorStopTimeout"`
 }
 
 // Use to load Heis/config/elevator_params.json
