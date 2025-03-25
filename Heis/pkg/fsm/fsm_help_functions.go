@@ -26,7 +26,7 @@ func requestButtonPress(elev *elevator.Elevator, btn_floor int, btn_type elevio.
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately((*elev), btn_floor, btn_type) {
 			// send clear to assigned orders
-			doorTimerStartCh <-true
+			doorTimerStartCh <- true
 			*elev = clearLocalOrder(*elev, btn_floor, btn_type, completedOrderCH)
 		} else {
 			*elev = setLocalOrder(*elev, btn_floor, btn_type)
@@ -60,7 +60,6 @@ func requestButtonPress(elev *elevator.Elevator, btn_floor int, btn_type elevio.
 		case elevator.EB_Moving:
 			elevio.SetMotorDirection((*elev).Dirn)
 			departureFromFloorCh <- true
-			
 
 		case elevator.EB_Idle:
 			//nothing should be done
@@ -141,6 +140,7 @@ func DoorTimeout(elev *elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, de
 }
 
 func setCabLights(elev *elevator.Elevator) {
+
 	for floor := 0; floor < N_floors; floor++ {
 		btn := int(elevio.BT_Cab)
 		if elev.LocalOrders[floor][btn] {
@@ -153,7 +153,7 @@ func setCabLights(elev *elevator.Elevator) {
 
 func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
 	for floor := range N_floors {
-		for btn := range (N_buttons-1) {
+		for btn := range N_buttons - 1 {
 			elev.LocalOrders[floor][btn] = false
 		}
 	}

@@ -1,10 +1,12 @@
 package orders
 
 import (
+	"Heis/pkg/config"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/network/msgTypes"
 	"Heis/pkg/network/peers"
+	"log"
 
 	// "Heis/pkg/timer"
 	"Heis/pkg/deepcopy"
@@ -17,9 +19,23 @@ import (
 // and the values are a 2d slice of assigned orders for the corresponding elevator implemented as a cyclic counter.
 // The module is responsible for synchronization of orders and assigning orders to the correct elevator.
 
-// temporarly, should be loaded from config
-const N_floors = 4
-const N_buttons = 3
+// define in config
+var (
+	N_floors   int
+	N_buttons  int
+	TravelTime int
+)
+
+// inits global variables from the config file
+func init() {
+	cfg, err := config.LoadConfig("config/elevator_params.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	N_floors = cfg.N_floors // Preserving your exact naming
+	N_buttons = cfg.N_buttons
+	TravelTime = cfg.TravelTime
+}
 
 // "Main" function for orders. Takes a ButtonEvent from fsm on localRequest channel when a button is pushed
 // and sends an ButtonEvent on localAssignedOrder channel if this eleveator should take order
@@ -75,14 +91,14 @@ func OrderHandler(selfId string,
 					orderMerger(&assignedOrders, Elevators, activeElevators, selfId, remoteElevatorState.Id)
 
 					// reassign orders if remote elevator have been obstructed or gotten a motorstop
-					
+
 					//denne fjerner hall calls fra en heis som kobler seg på igjen
 					reassignOrdersFromUnavailable(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
 					// reassignOrders(deepcopy.DeepCopyElevatorsMap(Elevators), &assignedOrders, activeElevators, selfId)
 					Elevators[selfId] = elevator.NetworkElevator{Elevator: Elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 				}
 			}
-		case <- nettworkDisconnectCh:
+		case <-nettworkDisconnectCh:
 			//To make sure the for loops run even when not reciving remoteElevatorState from peers.reciever
 			fmt.Println("disconnected")
 			activeElevators = []string{selfId}

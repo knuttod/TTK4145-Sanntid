@@ -41,9 +41,9 @@ func reassignOrdersFromUnavailable(elevators map[string]elevator.NetworkElevator
 		if elev.MotorStop || elev.Obstructed {
 			orders := elevators[elevId].AssignedOrders[elevId]
 			for floor := range N_floors {
-				for btn := range (N_buttons - 1) {
+				for btn := range N_buttons - 1 {
 					if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
-					orders[floor][btn] == elevator.Ordr_Confirmed {
+						orders[floor][btn] == elevator.Ordr_Confirmed {
 						order := elevio.ButtonEvent{
 							Floor:  floor,
 							Button: elevio.ButtonType(btn),
@@ -64,16 +64,16 @@ func reassignOrdersFromDisconnectedElevators(elevators map[string]elevator.Netwo
 	for _, elevId := range lostElevators {
 		orders := elevators[elevId].AssignedOrders[elevId]
 		for floor := range N_floors {
-			for btn := range (N_buttons - 1) {
+			for btn := range N_buttons - 1 {
 				if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
 					orders[floor][btn] == elevator.Ordr_Confirmed {
-						order := elevio.ButtonEvent{
-							Floor:  floor,
-							Button: elevio.ButtonType(btn),
-						}
-						fmt.Println("reassign from disconnect")
-						assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
-						setOrder(assignedOrders, elevId, floor, btn, elevator.Ordr_Unknown)
+					order := elevio.ButtonEvent{
+						Floor:  floor,
+						Button: elevio.ButtonType(btn),
+					}
+					fmt.Println("reassign from disconnect")
+					assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
+					setOrder(assignedOrders, elevId, floor, btn, elevator.Ordr_Unknown)
 				}
 			}
 		}
@@ -100,7 +100,7 @@ func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 
 	//High cost to ensure that the first elevator that is not obstructed or motorstop is chosen
 	minCost := 99999
-	
+
 	elevCost := 0
 
 	var minElev string
@@ -116,10 +116,8 @@ func assignOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 		elevCost = cost(Elevators[elev].Elevator, order)
 		//Adding distance to cost for differentate between elevators with same cost
 		distance := math.Abs(float64(Elevators[elev].Elevator.Floor) - float64(order.Floor))
-		elevCost +=int(distance) *3
+		elevCost += int(distance) * 3
 
-		
-		
 		if elevCost < minCost {
 			minCost = elevCost
 			minElev = elev

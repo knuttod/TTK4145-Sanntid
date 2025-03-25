@@ -14,12 +14,12 @@ const (
 type OrderState int
 
 const (
-	Ordr_None 			OrderState = 0
-	Ordr_Unconfirmed    OrderState = 1
-	Ordr_Confirmed 		OrderState = 2
-	Ordr_Complete		OrderState = 3
-	
-	Ordr_Unknown   		OrderState = -1
+	Ordr_None        OrderState = 0
+	Ordr_Unconfirmed OrderState = 1
+	Ordr_Confirmed   OrderState = 2
+	Ordr_Complete    OrderState = 3
+
+	Ordr_Unknown OrderState = -1
 )
 
 type ElevatorBehaviour int
@@ -34,12 +34,12 @@ const (
 type Elevator struct {
 	Floor       int
 	Dirn        elevio.MotorDirection
-	Behaviour  ElevatorBehaviour
-	Obstructed bool
-	MotorStop bool
+	Behaviour   ElevatorBehaviour
+	Obstructed  bool
+	MotorStop   bool
 	LocalOrders [][]bool
-	
-	Id         string
+
+	Id     string
 	Config struct {
 		ClearRequestVariant ClearRequestVariant
 		DoorOpenDuration_s  float64
@@ -57,7 +57,7 @@ type DirnBehaviourPair struct {
 }
 
 // Initializes an elevator struct. All orders are by default set to 0/false
-func Elevator_init(N_floors, N_buttons int, id string) Elevator{
+func Elevator_init(N_floors, N_buttons int, id string) Elevator {
 	// initialize the (*e) struct
 	var elev Elevator
 	elev.Floor = -1

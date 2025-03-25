@@ -4,12 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 // Config defines the structure of the configuration
 type Config struct {
-	NumFloors  int `json:"NumFloors"`
-	NumButtons int `json:"NumButtons"`
+	N_floors                  int           `json:"N_floors"`
+	N_buttons                 int           `json:"N_buttons"`
+	TravelTime                int           `json:"TravelTime"`
+	DoorOpenDuration          time.Duration `json:"DoorOpenDuration"`
+	StateUpdatePeriodMs       int           `json:"StateUpdatePeriodMs"`
+	ElevatorStuckToleranceSec int           `json:"ElevatorStuckToleranceSec"`
+	ReconnectTimerSec         int           `json:"ReconnectTimerSec"`
+	LocalElevator             int           `json:"LocalElevator"`
+	MotorStopTimeout          time.Duration `json:"motorStopTimeout"`
 }
 
 // Use to load Heis/config/elevator_params.json
@@ -28,11 +36,3 @@ func LoadConfig(filePath string) (*Config, error) {
 
 	return config, nil
 }
-
-const NumFloors = 4
-const NumButtons = 3
-const DoorOpenDuration = 3
-const StateUpdatePeriodMs = 500
-const ElevatorStuckToleranceSec = 5
-const ReconnectTimerSec = 3
-const LocalElevator = 0

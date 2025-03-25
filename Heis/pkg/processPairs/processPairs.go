@@ -5,7 +5,7 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
-	"Heis/pkg/msgTypes"
+	"Heis/pkg/network/msgTypes"
 	"Heis/pkg/network/peers"
 	"Heis/pkg/orders"
 	"log"
@@ -21,7 +21,7 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	elevio.Init("localhost:"+port, cfg.NumFloors)
+	elevio.Init("localhost:"+port, cfg.N_floors)
 
 	// Create channels for inter-module communication
 	peerUpdateCh := make(chan peers.PeerUpdate)

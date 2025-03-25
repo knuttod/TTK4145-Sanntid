@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//Bør skrive om dette til doortimer
+// Bør skrive om dette til doortimer
 // Takes in timer duration on timer start and sends on timer End when timer is finished. If timer start is sent twice before done, the timer is reset
 func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimerEndCh chan bool) {
 	//doorOpenTime is expected to be in seconds
@@ -14,7 +14,7 @@ func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimer
 	timer := time.NewTimer(doorOpenTime)
 	for {
 		select {
-		case <- doorTimerStartCh:
+		case <-doorTimerStartCh:
 			timer.Reset(doorOpenTime)
 		case <-timer.C:
 			doorTimerEndCh <- true

@@ -123,7 +123,6 @@ func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elev
 	}
 }
 
-
 // Clears at current floor and sends that the order is complete to the order module.
 func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
@@ -155,7 +154,6 @@ func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.Bu
 	return elev
 }
 
-
 func setLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType) elevator.Elevator {
 	elev.LocalOrders[floor][btn] = true
 	return elev
@@ -165,7 +163,7 @@ func clearLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType, c
 	elev.LocalOrders[floor][btn] = false
 	//send on channel to orders that an order is completed/cleared
 	completedOrderCH <- elevio.ButtonEvent{
-		Floor: floor,
+		Floor:  floor,
 		Button: btn,
 	}
 	return elev

@@ -7,9 +7,6 @@ import (
 	// "fmt"
 )
 
-const TRAVEL_TIME = 10
-const NumElevators = 4
-
 func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 	if elevator.ElevatorBehaviour(e.Behaviour) != elevator.EB_Unavailable {
 
@@ -30,7 +27,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 
 			}
 		case elevator.EB_Moving:
-			duration += TRAVEL_TIME / 2 //dersom heisen er i beveglse legger vi til en kostand
+			duration += TravelTime / 2 //dersom heisen er i beveglse legger vi til en kostand
 			elev.Floor += int(elev.Dirn)
 		case elevator.EB_DoorOpen:
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
@@ -56,7 +53,7 @@ func cost(e elevator.Elevator, req elevio.ButtonEvent) int {
 				}
 			}
 			elev.Floor += int(elev.Dirn) //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
-			duration += TRAVEL_TIME      //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
+			duration += TravelTime       //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
 		//		return 999
 

@@ -4,11 +4,9 @@ import (
 	"Heis/pkg/elevator"
 )
 
-
 type ElevatorStateMsg struct {
 	// Message        string
-	Iter           int
+	Iter            int
 	NetworkElevator elevator.NetworkElevator
-	Id       string
+	Id              string
 }
-
