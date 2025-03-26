@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-// Bør skrive om dette til doortimer
 // Takes in timer duration on timer start and sends on timer End when timer is finished. If timer start is sent twice before done, the timer is reset
 func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimerEndCh chan bool) {
 	//doorOpenTime is expected to be in seconds
 
-	// timeoutInterval := time.Duration(doorOpenTime) * time.Second
+	//tror dette er riktig/lurt
+	<- doorTimerStartCh
 	timer := time.NewTimer(doorOpenTime)
 	for {
 		select {
@@ -20,26 +20,12 @@ func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimer
 			doorTimerEndCh <- true
 		}
 	}
-	// for {
-	// 	select {
-	// 	case <-doorTimerStartCh:
-	// 		timer := time.NewTimer(doorOpenTime)
-	// 		for {
-	// 			select {
-	// 			case <-doorTimerStartCh:
-	// 				timer.Reset(doorOpenTime)
-
-	// 			case <-timer.C:
-	// 				doorTimerEndCh <- true
-	// 				break
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
 
 func motorStopTimer(motorStopTimeoutTime time.Duration, arrivedOnFloorCh, departureFromFloorCh, motorStopCh chan bool) {
-
+	
+	//tror dette er riktig/lurt
+	<- departureFromFloorCh
 	//denne bør kanskje være lang
 	timer := time.NewTimer(motorStopTimeoutTime)
 	for {
@@ -49,6 +35,7 @@ func motorStopTimer(motorStopTimeoutTime time.Duration, arrivedOnFloorCh, depart
 			timer.Reset(motorStopTimeoutTime)
 
 		case <-arrivedOnFloorCh:
+			//Tries to stop timer, if not possible take return value from timer
 			if !timer.Stop() {
 				<-timer.C
 			}

@@ -55,33 +55,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	go doorTimer(doorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
 	go motorStopTimer(motorStopTimeout, arrivedOnFloorCh, departureFromFloorCh, motorStopCh)
 
-	elev := elevator.Elevator_init(N_floors, N_buttons, id)
-
-	for floor := range N_floors {
-		for btn := range N_buttons {
-			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
-			elevio.SetDoorOpenLamp(false)
-		}
-	}
-
-	floor := elevio.GetFloor()
-	if floor == -1 {
-		initBetweenFloors(&elev)
-		current_floor := <-drvFloorsCh
-		elevio.SetMotorDirection(elevio.MD_Stop)
-		elev.Floor = current_floor
-		elevio.SetFloorIndicator(current_floor)
-		elev.Dirn = elevio.MD_Stop
-		elev.Behaviour = elevator.EB_Idle
-
-		// floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
-	} else {
-		elev.Floor = floor
-		elevio.SetFloorIndicator(floor)
-	}
-
-	// //trenger kanskje ikke denne?
-	// fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
+	elev := fsmInit(id, drvFloorsCh)
 
 	for {
 		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
@@ -94,14 +68,14 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
 			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
-		case current_floor := <-drvFloorsCh:
-			floorArrival(&elev, current_floor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+		case newFloor := <-drvFloorsCh:
+			floorArrival(&elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 		case obstruction := <-drvObstrCh:
 			if obstruction {
-				elev.Obstructed = true
 				//remove hall orders since other elevators (this elevator if it is the only one on the nettwork) takes over from this
-				elev = removeLocalHallOrders(elev)
 				fmt.Println("Obstruction switch activated")
+				elev.Obstructed = true
+				elev = removeLocalHallOrders(elev)
 			} else {
 				elev.Obstructed = false
 				doorTimerStartCh <- true

@@ -8,6 +8,35 @@ import (
 	//"fmt"
 )
 
+
+func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
+	elev := elevator.Elevator_init(N_floors, N_buttons, id)
+
+	for floor := range N_floors {
+		for btn := range N_buttons {
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
+			elevio.SetDoorOpenLamp(false)
+		}
+	}
+
+	floor := elevio.GetFloor()
+	if floor == -1 {
+		initBetweenFloors(&elev)
+		//wait to arrive on floor
+		newFloor := <-drvFloorsCh
+		elevio.SetMotorDirection(elevio.MD_Stop)
+		elev.Floor = newFloor
+		elevio.SetFloorIndicator(newFloor)
+		elev.Dirn = elevio.MD_Stop
+		elev.Behaviour = elevator.EB_Idle
+
+	} else {
+		elev.Floor = floor
+		elevio.SetFloorIndicator(floor)
+	}
+
+	return elev
+}
 // When initialising between floors, the motor direction is set downwards.
 // When it reaches a floor it will then behave normaly.
 func initBetweenFloors(elev *elevator.Elevator) {
