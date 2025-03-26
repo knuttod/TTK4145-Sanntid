@@ -28,7 +28,6 @@ const (
 	EB_Idle        ElevatorBehaviour = 0
 	EB_DoorOpen    ElevatorBehaviour = 1
 	EB_Moving      ElevatorBehaviour = 2
-	EB_Unavailable ElevatorBehaviour = 3
 )
 
 type Elevator struct {
@@ -42,7 +41,6 @@ type Elevator struct {
 	Id     string
 	Config struct {
 		ClearRequestVariant ClearRequestVariant
-		DoorOpenDuration_s  float64
 	}
 }
 
@@ -77,7 +75,5 @@ func Elevator_init(N_floors, N_buttons int, id string) Elevator {
 	elev.Id = id
 
 	elev.Config.ClearRequestVariant = CV_InDirn
-	elev.Config.DoorOpenDuration_s = 3.0
-
 	return elev
 }

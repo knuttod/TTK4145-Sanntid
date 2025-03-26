@@ -110,7 +110,6 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 
 //ensure that the elevator struct given as input is a deepcopy as this function changes the values
 func cost(elev elevator.Elevator) int {
-	if elevator.ElevatorBehaviour(elev.Behaviour) != elevator.EB_Unavailable {
 
 		duration := 0
 
@@ -130,7 +129,7 @@ func cost(elev elevator.Elevator) int {
 		case elevator.EB_DoorOpen:
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
 			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
-			duration -= int(elev.Config.DoorOpenDuration_s)
+			duration -= int(fsm.DoorTimerInterval)
 
 		}
 		for duration < 999 {
@@ -155,7 +154,7 @@ func cost(elev elevator.Elevator) int {
 		}
 		//		return 999
 
-	}
+	// }
 	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
 }
 
