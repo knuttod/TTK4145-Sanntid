@@ -67,10 +67,10 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
-			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
+			elev = requestButtonPress(elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
 
 		case newFloor := <-drvFloorsCh:
-			floorArrival(&elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+			elev = floorArrival(elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 
 		case obstruction := <-drvObstrCh:
 			if obstruction {
@@ -91,8 +91,126 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 		case <-doorTimerFinishedCh:
 			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {
-				DoorTimeout(&elev, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+				elev = doorTimeout(elev, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
 			}
 		}
 	}
 }
+
+
+// Handles button presses on a local level, by processing requests based on the
+// elevator's current behavior. If the elevator is idle, it determines the next action
+// (moving or opening doors). If the elevator is moving or has doors open, it updates
+// the request state accordingly. The function also manages the door timer, sends updated
+// elevator states over UDP, and updates the button lights.
+func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.ButtonType, 
+	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+
+	switch elev.Behaviour {
+	case elevator.EB_DoorOpen:
+		if ShouldClearImmediately(elev, btnFloor, btnType) {
+			doorTimerStartCh <- true
+			elev = clearLocalOrder(elev, btnFloor, btnType, completedOrderCH)
+		} else {
+			elev = setLocalOrder(elev, btnFloor, btnType)
+		}
+
+	case elevator.EB_Moving:
+		elev = setLocalOrder(elev, btnFloor, btnType)
+
+	case elevator.EB_Idle:
+		elev = setLocalOrder(elev, btnFloor, btnType)
+
+		var directionAndBehaviour elevator.DirnBehaviourPair = ChooseDirection(elev)
+		elev.Dirn = directionAndBehaviour.Dirn
+		elev.Behaviour = directionAndBehaviour.Behaviour
+
+		switch directionAndBehaviour.Behaviour {
+		case elevator.EB_DoorOpen:
+			elevio.SetDoorOpenLamp(true)
+			doorTimerStartCh <- true
+			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCH).LocalOrders
+
+			// To make sure both hall call up and down are not cleared when an elevator has no orders and gets both calls in the floor it is currently at
+			if btnType == elevio.BT_HallUp {
+				elev.Dirn = elevio.MD_Up
+			} else if btnType == elevio.BT_HallDown {
+				elev.Dirn = elevio.MD_Down
+			}
+
+		case elevator.EB_Moving:
+			elevio.SetMotorDirection(elev.Dirn)
+			departureFromFloorCh <- true
+
+		case elevator.EB_Idle:
+			//nothing should be done
+		}
+	}
+	setCabLights(elev)
+	return elev
+}
+
+// When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
+// to stop. if it is supposed to stop it stops, clears the floor then opens the door.
+func floorArrival(elev elevator.Elevator, newFloor int, 
+	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+
+	elev.Floor = newFloor
+	elevio.SetFloorIndicator(elev.Floor)
+
+	if !elev.MotorStop {
+		arrivedOnFloorCh <- true
+	} else if elev.MotorStop {
+		fmt.Println("power back")
+		elev.MotorStop = false
+	}
+
+	switch elev.Behaviour {
+	case elevator.EB_Moving:
+		if ShouldStop(elev) {
+			elevio.SetMotorDirection(elevio.MD_Stop)
+			elevio.SetDoorOpenLamp(true)
+			doorTimerStartCh <- true
+			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCH).LocalOrders
+			setCabLights(elev)
+			elev.Behaviour = elevator.EB_DoorOpen
+		} else {
+			departureFromFloorCh <- true
+		}
+	}
+	return elev
+}
+
+// DoorTimeout is used to start the timer when the door openes, and
+// handles if there is an obstruction when the door closes. It is
+// runned twice, once at the begining of the timer initialisation and
+// once when the door is supposed to close to check if the obstruction
+// is active.
+func doorTimeout(elev elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+
+	switch elev.Behaviour {
+	case elevator.EB_DoorOpen:
+		var directionAndBehaviour elevator.DirnBehaviourPair = ChooseDirection(elev)
+		elev.Dirn = directionAndBehaviour.Dirn
+		elev.Behaviour = directionAndBehaviour.Behaviour
+
+		switch elev.Behaviour {
+		case elevator.EB_DoorOpen:
+			doorTimerStartCh <- true
+			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCH).LocalOrders
+			setCabLights(elev)
+
+		case elevator.EB_Moving:
+			elevio.SetDoorOpenLamp(false)
+			elevio.SetMotorDirection(elev.Dirn)
+			departureFromFloorCh <- true
+
+		case elevator.EB_Idle:
+			elevio.SetDoorOpenLamp(false)
+			elevio.SetMotorDirection(elev.Dirn)
+
+		}
+	}
+	return elev
+}
+

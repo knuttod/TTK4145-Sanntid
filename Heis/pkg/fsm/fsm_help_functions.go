@@ -3,7 +3,6 @@ package fsm
 import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"fmt"
 )
 
 
@@ -20,8 +19,16 @@ func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
 		}
 	}
 
+	//If elevator starts between two floors
 	if elevio.GetFloor() == -1 {
-		elev = initBetweenFloors(elev, drvFloorsCh)
+		elevio.SetMotorDirection(elevio.MD_Down)
+
+		//wait to arrive on a floor
+		newFloor := <-drvFloorsCh
+		elevio.SetMotorDirection(elevio.MD_Stop)
+		elevio.SetFloorIndicator(newFloor)
+		elev.Floor = newFloor
+
 	} else {
 		floor := <- drvFloorsCh
 		elevio.SetFloorIndicator(floor)
@@ -31,130 +38,180 @@ func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
 	return elev
 }
 
-func initBetweenFloors(elev elevator.Elevator, drvFloorsCh chan int) elevator.Elevator {
-	elevio.SetMotorDirection(elevio.MD_Down)
 
-	//wait to arrive on floor
-	newFloor := <-drvFloorsCh
-	elevio.SetMotorDirection(elevio.MD_Stop)
-	elevio.SetFloorIndicator(newFloor)
-	elev.Floor = newFloor
-	return elev 
-}
-
-// Handles button presses on a local level, by processing requests based on the
-// elevator's current behavior. If the elevator is idle, it determines the next action
-// (moving or opening doors). If the elevator is moving or has doors open, it updates
-// the request state accordingly. The function also manages the door timer, sends updated
-// elevator states over UDP, and updates the button lights.
-func requestButtonPress(elev *elevator.Elevator, btn_floor int, btn_type elevio.ButtonType, doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
-	switch (*elev).Behaviour {
-	case elevator.EB_DoorOpen:
-		if ShouldClearImmediately((*elev), btn_floor, btn_type) {
-			doorTimerStartCh <- true
-			*elev = clearLocalOrder(*elev, btn_floor, btn_type, completedOrderCH)
-		} else {
-			*elev = setLocalOrder(*elev, btn_floor, btn_type)
-		}
-
-	case elevator.EB_Moving:
-		*elev = setLocalOrder(*elev, btn_floor, btn_type)
-
-	case elevator.EB_Idle:
-		*elev = setLocalOrder(*elev, btn_floor, btn_type)
-		var directionAndBehaviour elevator.DirnBehaviourPair = ChooseDirection((*elev))
-		(*elev).Dirn = directionAndBehaviour.Dirn
-		(*elev).Behaviour = directionAndBehaviour.Behaviour
-
-		switch directionAndBehaviour.Behaviour {
-		case elevator.EB_DoorOpen:
-			elevio.SetDoorOpenLamp(true)
-			doorTimerStartCh <- true
-			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
-
-			// To make sure both hall call up and down are not cleared when an elevator has no orders and gets both calls in the floor it is currently at
-			if btn_type == elevio.BT_HallUp {
-				(*elev).Dirn = elevio.MD_Up
-			} else if btn_type == elevio.BT_HallDown {
-				(*elev).Dirn = elevio.MD_Down
+func Above(elev elevator.Elevator) bool {
+	for f := elev.Floor + 1; f < numFloors; f++ {
+		for btn := 0; btn < numBtns; btn++ {
+			if elev.LocalOrders[f][btn] {
+				return true
 			}
-
-		case elevator.EB_Moving:
-			elevio.SetMotorDirection((*elev).Dirn)
-			departureFromFloorCh <- true
-
-		case elevator.EB_Idle:
-			//nothing should be done
 		}
-
 	}
-	setCabLights(elev)
+
+	return false
 }
 
-// When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
-// to stop. if it is supposed to stop it stops, clears the floor then opens the door.
-func floorArrival(elev *elevator.Elevator, newFloor int, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
-
-	(*elev).Floor = newFloor
-	elevio.SetFloorIndicator((*elev).Floor)
-
-	if !(*elev).MotorStop {
-		arrivedOnFloorCh <- true
-	} else if (*elev).MotorStop {
-		fmt.Println("power back")
-		(*elev).MotorStop = false
+func Below(elev elevator.Elevator) bool {
+	for f := 0; f < elev.Floor; f++ {
+		for btn := 0; btn < numBtns; btn++ {
+			if elev.LocalOrders[f][btn] {
+				return true
+			}
+		}
 	}
+	return false
+}
 
-	switch (*elev).Behaviour {
-	case elevator.EB_Moving:
-		if ShouldStop((*elev)) {
-			elevio.SetMotorDirection(elevio.MD_Stop)
-			elevio.SetDoorOpenLamp(true)
-			doorTimerStartCh <- true
-			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
-			setCabLights(elev)
-			(*elev).Behaviour = elevator.EB_DoorOpen
+func Here(elev elevator.Elevator) bool {
+	for btn := 0; btn < numBtns; btn++ {
+		if elev.LocalOrders[elev.Floor][btn] {
+			return true
+		}
+	}
+	return false
+}
+
+func ChooseDirection(elev elevator.Elevator) elevator.DirnBehaviourPair {
+	switch elev.Dirn {
+	case elevio.MD_Up:
+		if Above(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_Moving}
+		} else if Here(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_DoorOpen}
+		} else if Below(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_Moving}
 		} else {
-			departureFromFloorCh <- true
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
 		}
+	case elevio.MD_Down:
+		if Below(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_Moving}
+		} else if Here(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_DoorOpen}
+		} else if Above(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_Moving}
+		} else {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
+		}
+
+	case elevio.MD_Stop:
+		if Here(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_DoorOpen}
+		} else if Above(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_Moving}
+		} else if Below(elev) {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_Moving}
+		} else {
+			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
+		}
+	default:
+		return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
+	}
+
+}
+
+func ShouldStop(elev elevator.Elevator) bool {
+	//Får av en eller annen rar grunn etasje 4??
+	switch elev.Dirn {
+	case elevio.MD_Down:
+		if (elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) || (elev.LocalOrders[elev.Floor][elevio.BT_Cab]) || (!Below(elev)) {
+			return true
+		} else {
+			return false
+		}
+
+	case elevio.MD_Up:
+		if (elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) || (elev.LocalOrders[elev.Floor][elevio.BT_Cab]) || (!Above(elev)) {
+			return true
+		} else {
+			return false
+		}
+
+	case elevio.MD_Stop:
+		return true
+
+	default:
+		return true
 	}
 }
 
-// DoorTimeout is used to start the timer when the door openes, and
-// handles if there is an obstruction when the door closes. It is
-// runned twice, once at the begining of the timer initialisation and
-// once when the door is supposed to close to check if the obstruction
-// is active.
-func DoorTimeout(elev *elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) {
-
-	switch (*elev).Behaviour {
-	case elevator.EB_DoorOpen:
-		// fmt.Println("orders:",(*elev).LocalOrders)
-		var directionAndBehaviour elevator.DirnBehaviourPair = ChooseDirection((*elev))
-		(*elev).Dirn = directionAndBehaviour.Dirn
-		(*elev).Behaviour = directionAndBehaviour.Behaviour
-		switch (*elev).Behaviour {
-		case elevator.EB_DoorOpen:
-			doorTimerStartCh <- true //????
-			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
-			setCabLights(elev)
-
-		//lagt inn selv
-		case elevator.EB_Moving:
-			elevio.SetDoorOpenLamp(false)
-			elevio.SetMotorDirection((*elev).Dirn)
-			departureFromFloorCh <- true
-		//
-
-		case elevator.EB_Idle:
-			elevio.SetDoorOpenLamp(false)
-			elevio.SetMotorDirection((*elev).Dirn)
-
+func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elevio.ButtonType) bool {
+	switch elev.Config.ClearRequestVariant {
+	case elevator.CV_ALL:
+		if elev.Floor == btn_floor {
+			return true
+		} else {
+			return false
 		}
+	case elevator.CV_InDirn:
+		if (elev.Floor == btn_floor) && ((elev.Dirn == elevio.MD_Up && btn_type == elevio.BT_HallUp) ||
+			(elev.Dirn == elevio.MD_Down && btn_type == elevio.BT_HallDown) ||
+			(elev.Dirn == elevio.MD_Stop) || (btn_type == elevio.BT_Cab)) {
+			return true
+		} else {
+			return false
+		}
+	default:
+		return false
 	}
 }
 
-func setCabLights(elev *elevator.Elevator) {
+// Clears at current floor and sends that the order is complete to the order module.
+func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+	switch elev.Config.ClearRequestVariant {
+	case elevator.CV_ALL:
+		for btn := 0; btn < numBtns; btn++ {
+			elev = clearLocalOrder(elev, elev.Floor, elevio.ButtonType(btn), completedOrderCH)
+		}
+
+	case elevator.CV_InDirn:
+		elev = clearLocalOrder(elev, elev.Floor, elevio.BT_Cab, completedOrderCH)
+		switch elev.Dirn {
+		case elevio.MD_Up:
+			if (!Above(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) {
+				elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)
+			}
+			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
+
+		case elevio.MD_Down:
+			if (!Below(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) {
+				elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
+			}
+			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)
+
+		case elevio.MD_Stop:
+			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
+			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)
+		}
+	}
+	return elev
+}
+
+func setLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType) elevator.Elevator {
+	elev.LocalOrders[floor][btn] = true
+	return elev
+}
+
+func clearLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+	elev.LocalOrders[floor][btn] = false
+	//send on channel to orders that an order is completed/cleared
+	completedOrderCH <- elevio.ButtonEvent{
+		Floor:  floor,
+		Button: btn,
+	}
+	return elev
+}
+
+func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
+	for floor := range numFloors {
+		for btn := range numBtns - 1 {
+			elev.LocalOrders[floor][btn] = false
+		}
+	}
+	return elev
+}
+
+func setCabLights(elev elevator.Elevator) {
 
 	for floor := 0; floor < numFloors; floor++ {
 		btn := int(elevio.BT_Cab)
@@ -166,11 +223,4 @@ func setCabLights(elev *elevator.Elevator) {
 	}
 }
 
-func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
-	for floor := range numFloors {
-		for btn := range numBtns - 1 {
-			elev.LocalOrders[floor][btn] = false
-		}
-	}
-	return elev
-}
+
