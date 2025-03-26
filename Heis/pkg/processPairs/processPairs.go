@@ -27,9 +27,9 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
-	localAssignedOrderCH := make(chan elevio.ButtonEvent)
+	localAssignedOrderCh := make(chan elevio.ButtonEvent)
 	buttonPressCH := make(chan elevio.ButtonEvent)
-	completedOrderCh := make(chan elevio.ButtonEvent, 3)
+	completedOrderCh := make(chan elevio.ButtonEvent)
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
 	networkDisconnectCh := make(chan bool)
@@ -38,8 +38,8 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 	// Launch main elevator system components as goroutines
 	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
 	go peers.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
-	go fsm.Fsm(id, localAssignedOrderCH, buttonPressCH, completedOrderCh, fsmToOrdersCH)
-	go orders.OrderHandler(id, localAssignedOrderCH, buttonPressCH, completedOrderCh,
+	go fsm.Fsm(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, fsmToOrdersCH)
+	go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh,
 		remoteElevatorCh, peerUpdateCh, networkDisconnectCh, fsmToOrdersCH, ordersToPeersCH)
 
 	// Periodic state sync to backup
