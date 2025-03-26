@@ -15,7 +15,7 @@ import (
 var (
 	numFloors          int
 	numBtns         	 int
-	doorTimerInterval time.Duration
+	DoorTimerInterval time.Duration
 	motorStopTimeout  time.Duration
 )
 
@@ -27,7 +27,7 @@ func init() {
 	}
 	numFloors = cfg.NumFloors // Preserving your exact naming
 	numBtns = cfg.NumBtns
-	doorTimerInterval = cfg.DoorOpenDuration * time.Second
+	DoorTimerInterval = cfg.DoorOpenDuration * time.Second
 	motorStopTimeout = cfg.MotorStopTimeout * time.Second
 }
 
@@ -52,7 +52,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	go elevio.PollObstructionSwitch(drvObstrCh)
 	go elevio.PollStopButton(drvStopCh) //kanskje implementere stop?
 
-	go doorTimer(doorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
+	go doorTimer(DoorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
 	go motorStopTimer(motorStopTimeout, arrivedOnFloorCh, departureFromFloorCh, motorStopCh)
 
 	elev := fsmInit(id, drvFloorsCh)
