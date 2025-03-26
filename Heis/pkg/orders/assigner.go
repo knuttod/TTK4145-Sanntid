@@ -108,6 +108,8 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 }
 
 
+//syntes cost blir gitt litt rart. Hvis to heiser er idle og orders blir reassigned så kan det skje at bare den ene heisen tar alle i stedet for at de blir fordelte mellom heisene
+
 //ensure that the elevator struct given as input is a deepcopy as this function changes the values
 func cost(elev elevator.Elevator) int {
 
