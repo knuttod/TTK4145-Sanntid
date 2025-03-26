@@ -7,7 +7,7 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
 	"Heis/pkg/orders"
-	"Heis/pkg/network/msgTypes"
+	"Heis/pkg/network/message"
 	"Heis/pkg/network/peers"
 	"flag"
 	"fmt"
@@ -28,7 +28,7 @@ func main() {
 
 	// Create channels for inter-module communication
 	peerUpdateCh := make(chan peers.PeerUpdate)
-	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
+	remoteElevatorCh := make(chan message.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 	localAssignedOrderCh := make(chan elevio.ButtonEvent)
 	buttonPressCH := make(chan elevio.ButtonEvent)

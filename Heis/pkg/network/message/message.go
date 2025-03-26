@@ -1,4 +1,4 @@
-package msgTypes
+package message
 
 import (
 	"Heis/pkg/elevator"

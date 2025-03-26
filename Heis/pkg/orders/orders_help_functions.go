@@ -4,7 +4,7 @@ import (
 	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/network/msgTypes"
+	"Heis/pkg/network/message"
 	"Heis/pkg/network/peers"
 	// "fmt"
 	// "reflect"
@@ -134,7 +134,7 @@ func clearOrder(AssignedOrders *map[string][][]elevator.OrderState, Elevators ma
 }
 
 // Updates remoteElevator map and adds entries for remote Elevator in assignedOrders map for local elevator if they do not exist yet.
-func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, remoteElevatorState msgTypes.ElevatorStateMsg) {
+func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, remoteElevatorState message.ElevatorStateMsg) {
 	remoteElevator := remoteElevatorState.NetworkElevator
 	(*Elevators)[remoteElevatorState.Id] = remoteElevator
 

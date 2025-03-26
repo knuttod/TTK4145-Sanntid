@@ -4,7 +4,7 @@ import (
 	"Heis/pkg/config"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/network/msgTypes"
+	"Heis/pkg/network/message"
 	"Heis/pkg/network/peers"
 	"log"
 
@@ -43,7 +43,7 @@ func init() {
 // Also checks if an order to be done by this elevator should be started or not
 func OrderHandler(selfId string,
 	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan elevio.ButtonEvent,
-	remoteElevatorCh chan msgTypes.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate, nettworkDisconnectCh chan bool,
+	remoteElevatorCh chan message.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate, nettworkDisconnectCh chan bool,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
 	assignedOrders := AssignedOrdersInit(selfId)

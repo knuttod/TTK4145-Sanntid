@@ -2,9 +2,9 @@ package peers
 
 import (
 	"Heis/pkg/elevator"
-	// "Heis/pkg/nettwork/msgTypes"
+	// "Heis/pkg/nettwork/message"
 	"Heis/pkg/network/conn"
-	"Heis/pkg/network/msgTypes"
+	"Heis/pkg/network/message"
 
 
 	// "Heis/pkg/orders"
@@ -59,7 +59,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 			if enable {
 				iter++
 				// Create elevator state message
-				elevatorStateMsg := msgTypes.ElevatorStateMsg{
+				elevatorStateMsg := message.ElevatorStateMsg{
 					NetworkElevator: networkElevator,
 					Id:              id,
 					Iter:            iter,
@@ -94,7 +94,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 
 
 
-func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- msgTypes.ElevatorStateMsg) {
+func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- message.ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -108,7 +108,7 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 		conn.SetReadDeadline(time.Now().Add(interval))
 		n, _, _ := conn.ReadFrom(buf[0:])
 
-		var msg msgTypes.ElevatorStateMsg
+		var msg message.ElevatorStateMsg
 
 		//Jalla løsning
 		// if (len(p.Peers) == 1) && (p.Peers[0] == selfId) || (len(p.Peers) == 0) {
