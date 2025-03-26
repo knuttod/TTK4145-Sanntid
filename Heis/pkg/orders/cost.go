@@ -72,12 +72,12 @@ func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 		elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
 		switch elev.Dirn {
 		case elevio.MD_Up:
-			if (!fsm.Above(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallUp] == false) {
+			if (!fsm.LocalOrderAbove(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallUp] == false) {
 				elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
 			}
 			elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 		case elevio.MD_Down:
-			if (!fsm.Below(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallDown] == false) {
+			if (!fsm.LocalOrderBelow(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallDown] == false) {
 				elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 			}
 			elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false

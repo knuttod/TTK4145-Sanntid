@@ -39,10 +39,10 @@ func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
 }
 
 
-func Above(elev elevator.Elevator) bool {
-	for f := elev.Floor + 1; f < numFloors; f++ {
-		for btn := 0; btn < numBtns; btn++ {
-			if elev.LocalOrders[f][btn] {
+func LocalOrderAbove(elev elevator.Elevator) bool {
+	for floor := elev.Floor + 1; floor < numFloors; floor++ {
+		for btn := range numBtns {
+			if elev.LocalOrders[floor][btn] {
 				return true
 			}
 		}
@@ -51,10 +51,10 @@ func Above(elev elevator.Elevator) bool {
 	return false
 }
 
-func Below(elev elevator.Elevator) bool {
-	for f := 0; f < elev.Floor; f++ {
-		for btn := 0; btn < numBtns; btn++ {
-			if elev.LocalOrders[f][btn] {
+func LocalOrderBelow(elev elevator.Elevator) bool {
+	for floor := 0; floor < elev.Floor; floor++ {
+		for btn := range numBtns {
+			if elev.LocalOrders[floor][btn] {
 				return true
 			}
 		}
@@ -62,8 +62,8 @@ func Below(elev elevator.Elevator) bool {
 	return false
 }
 
-func Here(elev elevator.Elevator) bool {
-	for btn := 0; btn < numBtns; btn++ {
+func localOrderHere(elev elevator.Elevator) bool {
+	for btn := range numBtns{
 		if elev.LocalOrders[elev.Floor][btn] {
 			return true
 		}
@@ -74,32 +74,32 @@ func Here(elev elevator.Elevator) bool {
 func ChooseDirection(elev elevator.Elevator) elevator.DirnBehaviourPair {
 	switch elev.Dirn {
 	case elevio.MD_Up:
-		if Above(elev) {
+		if LocalOrderAbove(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_Moving}
-		} else if Here(elev) {
+		} else if localOrderHere(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_DoorOpen}
-		} else if Below(elev) {
+		} else if LocalOrderBelow(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_Moving}
 		} else {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
 		}
 	case elevio.MD_Down:
-		if Below(elev) {
+		if LocalOrderBelow(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_Moving}
-		} else if Here(elev) {
+		} else if localOrderHere(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_DoorOpen}
-		} else if Above(elev) {
+		} else if LocalOrderAbove(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_Moving}
 		} else {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
 		}
 
 	case elevio.MD_Stop:
-		if Here(elev) {
+		if localOrderHere(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_DoorOpen}
-		} else if Above(elev) {
+		} else if LocalOrderAbove(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Up, Behaviour: elevator.EB_Moving}
-		} else if Below(elev) {
+		} else if LocalOrderBelow(elev) {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Down, Behaviour: elevator.EB_Moving}
 		} else {
 			return elevator.DirnBehaviourPair{Dirn: elevio.MD_Stop, Behaviour: elevator.EB_Idle}
@@ -111,17 +111,16 @@ func ChooseDirection(elev elevator.Elevator) elevator.DirnBehaviourPair {
 }
 
 func ShouldStop(elev elevator.Elevator) bool {
-	//Får av en eller annen rar grunn etasje 4??
 	switch elev.Dirn {
 	case elevio.MD_Down:
-		if (elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) || (elev.LocalOrders[elev.Floor][elevio.BT_Cab]) || (!Below(elev)) {
+		if (elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) || (elev.LocalOrders[elev.Floor][elevio.BT_Cab]) || (!LocalOrderBelow(elev)) {
 			return true
 		} else {
 			return false
 		}
 
 	case elevio.MD_Up:
-		if (elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) || (elev.LocalOrders[elev.Floor][elevio.BT_Cab]) || (!Above(elev)) {
+		if (elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) || (elev.LocalOrders[elev.Floor][elevio.BT_Cab]) || (!LocalOrderAbove(elev)) {
 			return true
 		} else {
 			return false
@@ -143,6 +142,7 @@ func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elev
 		} else {
 			return false
 		}
+
 	case elevator.CV_InDirn:
 		if (elev.Floor == btn_floor) && ((elev.Dirn == elevio.MD_Up && btn_type == elevio.BT_HallUp) ||
 			(elev.Dirn == elevio.MD_Down && btn_type == elevio.BT_HallDown) ||
@@ -160,7 +160,7 @@ func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elev
 func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
-		for btn := 0; btn < numBtns; btn++ {
+		for btn := range numBtns{
 			elev = clearLocalOrder(elev, elev.Floor, elevio.ButtonType(btn), completedOrderCH)
 		}
 
@@ -168,13 +168,13 @@ func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.Bu
 		elev = clearLocalOrder(elev, elev.Floor, elevio.BT_Cab, completedOrderCH)
 		switch elev.Dirn {
 		case elevio.MD_Up:
-			if (!Above(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) {
+			if (!LocalOrderAbove(elev)) && (!elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) {
 				elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)
 			}
 			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
 
 		case elevio.MD_Down:
-			if (!Below(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) {
+			if (!LocalOrderBelow(elev)) && (!elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) {
 				elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallUp, completedOrderCH)
 			}
 			elev = clearLocalOrder(elev, elev.Floor, elevio.BT_HallDown, completedOrderCH)
@@ -212,8 +212,7 @@ func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
 }
 
 func setCabLights(elev elevator.Elevator) {
-
-	for floor := 0; floor < numFloors; floor++ {
+	for floor := range numFloors{
 		btn := int(elevio.BT_Cab)
 		if elev.LocalOrders[floor][btn] {
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
