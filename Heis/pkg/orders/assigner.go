@@ -48,9 +48,9 @@ func reassignOrdersFromDisconnectedElevators(assignedOrders map[string][][]eleva
 					}
 					fmt.Println("reassign from disconnect")
 					assignedOrders = assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
-					//set order to unkwon to ensure correct merging of orders when elevator reconnects
-					assignedOrders[elevId] = setOrder(assignedOrders[elevId], order.Floor, int(order.Button), elevator.Ordr_Unknown)
 				}
+				//sets all hall orders to unkwon to ensure correct merging of orders when elevator reconnects
+				assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Unknown)
 			}
 		}
 	}

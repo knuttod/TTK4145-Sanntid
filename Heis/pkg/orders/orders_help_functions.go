@@ -194,7 +194,6 @@ func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevat
 
 	//detects disconnected elevators and reassigns their orders
 	if len(p.Lost) > 0 {
-
 		if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 			reassignOrdersFromDisconnectedElevators(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators),  p.Lost, activeElevators, selfId)
 		}
@@ -209,9 +208,6 @@ func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevat
 		}
 	}
 
-	//fikse clearing av hall orders etter tilkoblinkg på nettet
-
-	//tror denne gjør akkurat det samme som den to hakk over
 	//sets orders on all other elevators to unkwown, since information can not be trusted
 	if len(p.Peers) == 1 {
 		for id := range assignedOrders {
@@ -220,7 +216,7 @@ func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevat
 				continue
 			}
 			for floor := range numFloors {
-				for btn := range numBtns - 1 {
+				for btn := range (numBtns - 1) {
 					assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Unknown)
 				}
 			}
@@ -229,9 +225,10 @@ func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevat
 	return assignedOrders
 }
 
+//Lights on if an elevator has an order confirmed, and off otherwise. Keeps track of changes to prevent oversending to elevio
 func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElevators []string, activeHallLights [][]bool) [][]bool {
 	for floor := range numFloors {
-		for btn := range numBtns - 1 {
+		for btn := range (numBtns - 1) {
 			setLight := false
 			for _, elev := range activeElevators {
 				if assignedOrders[elev][floor][btn] == elevator.Ordr_Confirmed {
@@ -248,6 +245,7 @@ func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElev
 	return activeHallLights
 }
 
+//turns all hall lights off
 func initHallLights() [][]bool {
 	activeHallLights := make([][]bool, numFloors)
 	for floor := range numFloors {
