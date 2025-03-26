@@ -14,7 +14,7 @@ func reassignOrders(elevators map[string]elevator.NetworkElevator, assignedOrder
 	for id, elev := range elevators {
 		if (elev.Elevator.Behaviour == elevator.EB_Unavailable) || (elev.Elevator.Obstructed) || (elev.Elevator.MotorStop) {
 			orders := (*assignedOrders)[id]
-			for floor := range N_floors {
+			for floor := range numFloors {
 				for btn := 0; btn < 2; btn++ {
 					if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
 						orders[floor][btn] == elevator.Ordr_Confirmed {
@@ -40,8 +40,8 @@ func reassignOrdersFromUnavailable(elevators map[string]elevator.NetworkElevator
 		elev := elevators[elevId].Elevator
 		if elev.MotorStop || elev.Obstructed {
 			orders := elevators[elevId].AssignedOrders[elevId]
-			for floor := range N_floors {
-				for btn := range N_buttons - 1 {
+			for floor := range numFloors {
+				for btn := range numBtns - 1 {
 					if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
 						orders[floor][btn] == elevator.Ordr_Confirmed {
 						order := elevio.ButtonEvent{
@@ -63,8 +63,8 @@ func reassignOrdersFromDisconnectedElevators(elevators map[string]elevator.Netwo
 
 	for _, elevId := range lostElevators {
 		orders := elevators[elevId].AssignedOrders[elevId]
-		for floor := range N_floors {
-			for btn := range N_buttons - 1 {
+		for floor := range numFloors {
+			for btn := range numBtns - 1 {
 				if orders[floor][btn] == elevator.Ordr_Unconfirmed ||
 					orders[floor][btn] == elevator.Ordr_Confirmed {
 					order := elevio.ButtonEvent{

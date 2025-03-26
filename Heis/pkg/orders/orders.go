@@ -21,8 +21,8 @@ import (
 
 // define in config
 var (
-	N_floors   int
-	N_buttons  int
+	numFloors   int
+	numBtns  int
 	TravelTime int
 )
 
@@ -32,8 +32,8 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	N_floors = cfg.N_floors // Preserving your exact naming
-	N_buttons = cfg.N_buttons
+	numFloors = cfg.NumFloors // Preserving your exact naming
+	numBtns = cfg.NumBtns
 	TravelTime = cfg.TravelTime
 }
 
@@ -110,8 +110,8 @@ func OrderHandler(selfId string,
 		// 	reassignOrders(Elevators, &assignedOrders, activeElevators, selfId)
 		// }
 
-		for floor := range N_floors {
-			for btn := range N_buttons {
+		for floor := range numFloors {
+			for btn := range numBtns {
 				// fmt.Println("Active: ", activeElevators)
 				// for _, elev := range activeElevators {
 				// 	// for elev := range assignedOrders {

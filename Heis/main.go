@@ -2,29 +2,49 @@ package main
 
 import (
 	"Heis/pkg/network/localip"
-	"Heis/pkg/processPairs"
+	"Heis/pkg/config"
+	"Heis/pkg/elevator"
+	"Heis/pkg/elevio"
+	"Heis/pkg/fsm"
+	"Heis/pkg/orders"
+	"Heis/pkg/network/msgTypes"
+	"Heis/pkg/network/peers"
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
+	"log"
 )
 
 func main() {
 	id, port := parseFlags()
 	id = generateIDIfEmpty(id)
-	backupPort := calculateBackupPort(port)
 
-	// Determine process role using processPairs
-	connection, err := processPairs.SetupUDPListener(backupPort)
+	cfg, err := config.LoadConfig("config/elevator_params.json")
 	if err != nil {
-		fmt.Println("Starting as primary...")
-		go processPairs.StartPrimaryProcess(id, port, backupPort)
-		go processPairs.SpawnBackupProcess(id, port)
-	} else {
-		fmt.Println("Starting as backup...")
-		go processPairs.BackupSetup(id, port, connection, backupPort)
-		go processPairs.MonitorAndTakeOver(id, port, connection, backupPort)
+		log.Fatalf("Failed to load config: %v", err)
 	}
+
+	elevio.Init("localhost:"+port, cfg.NumFloors)
+
+	// Create channels for inter-module communication
+	peerUpdateCh := make(chan peers.PeerUpdate)
+	remoteElevatorCh := make(chan msgTypes.ElevatorStateMsg)
+	peerTxEnable := make(chan bool)
+	localAssignedOrderCh := make(chan elevio.ButtonEvent)
+	buttonPressCH := make(chan elevio.ButtonEvent)
+	completedOrderCh := make(chan elevio.ButtonEvent)
+	fsmToOrdersCH := make(chan elevator.Elevator)
+	ordersToPeersCH := make(chan elevator.NetworkElevator)
+	networkDisconnectCh := make(chan bool)
+	transmitterToRecivierSkipCh := make(chan bool)
+
+	// Launch main elevator system components as goroutines
+	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+	go peers.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
+	go fsm.Fsm(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, fsmToOrdersCH)
+	go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh,
+		remoteElevatorCh, peerUpdateCh, networkDisconnectCh, fsmToOrdersCH, ordersToPeersCH)
+
 
 	select {}
 }
@@ -49,19 +69,4 @@ func generateIDIfEmpty(id string) string {
 		localIP = "DISCONNECTED"
 	}
 	return fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
-}
-
-// calculateBackupPort defines the backup communication port so the elevators have a unique port to communicate with its backup
-func calculateBackupPort(port string) string {
-	// adds a offset to the port
-	return strconv.Itoa(atoi(port) + 30210)
-}
-
-// atoi safely converts string to int
-func atoi(s string) int {
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		return 0 // Default to 0 if conversion fails
-	}
-	return i
 }

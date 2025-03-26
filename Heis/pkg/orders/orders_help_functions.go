@@ -14,10 +14,10 @@ import (
 func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
 	assignedOrders := map[string][][]elevator.OrderState{}
 
-	Orders := make([][]elevator.OrderState, N_floors)
-	for i := range N_floors {
-		Orders[i] = make([]elevator.OrderState, N_buttons)
-		for j := range N_buttons {
+	Orders := make([][]elevator.OrderState, numFloors)
+	for i := range numFloors {
+		Orders[i] = make([]elevator.OrderState, numBtns)
+		for j := range numBtns {
 			Orders[i][j] = elevator.Ordr_Unknown
 		}
 	}
@@ -32,8 +32,8 @@ func orderMerger(AssignedOrders *map[string][][]elevator.OrderState, Elevators m
 	var updateState elevator.OrderState
 
 	for _, id := range activeElevators {
-		for floor := range N_floors {
-			for btn := range N_buttons {
+		for floor := range numFloors {
+			for btn := range numBtns {
 				currentState = (*AssignedOrders)[id][floor][btn]
 				updateState = Elevators[remoteId].AssignedOrders[id][floor][btn]
 
@@ -215,8 +215,8 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 			reassignOrdersFromDisconnectedElevators(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, p.Lost, activeElevators, selfId)
 			// reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
 			// for _, elev := range p.Lost {
-			// 	for floor := range N_floors {
-			// 		for btn := range N_buttons - 1 {
+			// 	for floor := range numFloors {
+			// 		for btn := range numBtns - 1 {
 			// 			setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
 			// 		}
 			// 	}
@@ -226,7 +226,7 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 
 	//if elevator(s) has only disconnected and reconnects it has its latest info about its order and to not override it having no order the order is set to complete
 	if len(p.New) > 0 {
-		for floor := range N_floors {
+		for floor := range numFloors {
 			if (*assignedOrders)[selfId][floor][int(elevio.BT_Cab)] == elevator.Ordr_None {
 				setOrder(assignedOrders, selfId, floor, int(elevio.BT_Cab), elevator.Ordr_Complete)
 			}
@@ -243,8 +243,8 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 			if id == selfId {
 				continue
 			}
-			for floor := range N_floors {
-				for btn := range N_buttons - 1 {
+			for floor := range numFloors {
+				for btn := range numBtns - 1 {
 					setOrder(assignedOrders, id, floor, btn, elevator.Ordr_Unknown)
 				}
 			}
@@ -253,8 +253,8 @@ func peerUpdateHandler(assignedOrders *map[string][][]elevator.OrderState, Eleva
 }
 
 func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElevators []string, activeHallLights [][]bool) [][]bool {
-	for floor := range N_floors {
-		for btn := range N_buttons - 1 {
+	for floor := range numFloors {
+		for btn := range numBtns - 1 {
 			setLight := false
 			for _, elev := range activeElevators {
 				if assignedOrders[elev][floor][btn] == elevator.Ordr_Confirmed {
@@ -272,10 +272,10 @@ func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElev
 }
 
 func initHallLights() [][]bool {
-	activeHallLights := make([][]bool, N_floors)
-	for floor := range N_floors {
-		activeHallLights[floor] = make([]bool, N_buttons-1)
-		for btn := range N_buttons - 1 {
+	activeHallLights := make([][]bool, numFloors)
+	for floor := range numFloors {
+		activeHallLights[floor] = make([]bool, numBtns-1)
+		for btn := range numBtns - 1 {
 			activeHallLights[floor][btn] = false
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 		}

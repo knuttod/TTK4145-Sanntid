@@ -65,7 +65,7 @@ func cost(e elevator.Elevator) int {
 func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
-		for btn := 0; btn < N_buttons; btn++ {
+		for btn := 0; btn < numBtns; btn++ {
 			elev.LocalOrders[elev.Floor][btn] = false
 		}
 	case elevator.CV_InDirn:

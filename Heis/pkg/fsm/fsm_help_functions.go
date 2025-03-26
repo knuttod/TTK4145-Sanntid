@@ -10,10 +10,10 @@ import (
 
 
 func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
-	elev := elevator.Elevator_init(N_floors, N_buttons, id)
+	elev := elevator.Elevator_init(numFloors, numBtns, id)
 
-	for floor := range N_floors {
-		for btn := range N_buttons {
+	for floor := range numFloors {
+		for btn := range numBtns {
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
 			elevio.SetDoorOpenLamp(false)
 		}
@@ -170,7 +170,7 @@ func DoorTimeout(elev *elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, de
 
 func setCabLights(elev *elevator.Elevator) {
 
-	for floor := 0; floor < N_floors; floor++ {
+	for floor := 0; floor < numFloors; floor++ {
 		btn := int(elevio.BT_Cab)
 		if elev.LocalOrders[floor][btn] {
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, true)
@@ -181,8 +181,8 @@ func setCabLights(elev *elevator.Elevator) {
 }
 
 func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
-	for floor := range N_floors {
-		for btn := range N_buttons - 1 {
+	for floor := range numFloors {
+		for btn := range numBtns - 1 {
 			elev.LocalOrders[floor][btn] = false
 		}
 	}

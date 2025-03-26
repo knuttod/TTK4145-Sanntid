@@ -13,8 +13,8 @@ import (
 
 // define in config
 var (
-	N_floors          int
-	N_buttons         int
+	numFloors          int
+	numBtns         	 int
 	doorTimerInterval time.Duration
 	motorStopTimeout  time.Duration
 )
@@ -25,10 +25,10 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	N_floors = cfg.N_floors // Preserving your exact naming
-	N_buttons = cfg.N_buttons
+	numFloors = cfg.NumFloors // Preserving your exact naming
+	numBtns = cfg.NumBtns
 	doorTimerInterval = cfg.DoorOpenDuration * time.Second
-	motorStopTimeout = cfg.MotorStopTimeout * time.Millisecond
+	motorStopTimeout = cfg.MotorStopTimeout * time.Second
 }
 
 // FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCH, localRequestCH and completedOrderCH.
@@ -58,31 +58,35 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 	elev := fsmInit(id, drvFloorsCh)
 
 	for {
+		//sends a deepcopy to ensure correct message passing
 		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
 		case button_input := <-drvButtonsCh:
-			// fmt.Println("btn")
 			buttonPressCH <- button_input
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
 		case Order := <-localAssignedOrderCH:
 			requestButtonPress(&elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
+
 		case newFloor := <-drvFloorsCh:
 			floorArrival(&elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+
 		case obstruction := <-drvObstrCh:
 			if obstruction {
-				//remove hall orders since other elevators (this elevator if it is the only one on the nettwork) takes over from this
 				fmt.Println("Obstruction switch activated")
 				elev.Obstructed = true
+				//remove hall orders since other elevators (this elevator if it is the only one on the nettwork) takes over from this
 				elev = removeLocalHallOrders(elev)
 			} else {
 				elev.Obstructed = false
 				doorTimerStartCh <- true
 			}
+
 		case <-motorStopCh:
 			fmt.Println("motorstop")
 			elev.MotorStop = true
+			//remove hall orders since other elevators (this elevator if it is the only one on the nettwork) takes over from this
 			elev = removeLocalHallOrders(elev)
 
 		case <-doorTimerFinishedCh:

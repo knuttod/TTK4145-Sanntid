@@ -9,8 +9,8 @@ import (
 
 // Config defines the structure of the configuration
 type Config struct {
-	N_floors         int           `json:"N_floors"`
-	N_buttons        int           `json:"N_buttons"`
+	NumFloors        int           `json:"NumFloors"`
+	NumBtns    		 int           `json:"NumBtns"`
 	TravelTime       int           `json:"TravelTime"`
 	DoorOpenDuration time.Duration `json:"DoorOpenDuration"`
 	MotorStopTimeout time.Duration `json:"motorStopTimeout"`

@@ -7,8 +7,8 @@ import (
 )
 
 func Above(elev elevator.Elevator) bool {
-	for f := elev.Floor + 1; f < N_floors; f++ {
-		for btn := 0; btn < N_buttons; btn++ {
+	for f := elev.Floor + 1; f < numFloors; f++ {
+		for btn := 0; btn < numBtns; btn++ {
 			if elev.LocalOrders[f][btn] {
 				return true
 			}
@@ -20,7 +20,7 @@ func Above(elev elevator.Elevator) bool {
 
 func Below(elev elevator.Elevator) bool {
 	for f := 0; f < elev.Floor; f++ {
-		for btn := 0; btn < N_buttons; btn++ {
+		for btn := 0; btn < numBtns; btn++ {
 			if elev.LocalOrders[f][btn] {
 				return true
 			}
@@ -30,7 +30,7 @@ func Below(elev elevator.Elevator) bool {
 }
 
 func Here(elev elevator.Elevator) bool {
-	for btn := 0; btn < N_buttons; btn++ {
+	for btn := 0; btn < numBtns; btn++ {
 		if elev.LocalOrders[elev.Floor][btn] {
 			return true
 		}
@@ -127,7 +127,7 @@ func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elev
 func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
-		for btn := 0; btn < N_buttons; btn++ {
+		for btn := 0; btn < numBtns; btn++ {
 			elev = clearLocalOrder(elev, elev.Floor, elevio.ButtonType(btn), completedOrderCH)
 		}
 
