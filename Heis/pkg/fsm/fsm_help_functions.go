@@ -4,14 +4,15 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"fmt"
-	// "Heis/pkg/timer"
-	//"fmt"
 )
 
 
 func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
+	
+	//initialize elevator struct
 	elev := elevator.Elevator_init(numFloors, numBtns, id)
 
+	//clear all lights
 	for floor := range numFloors {
 		for btn := range numBtns {
 			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
@@ -19,30 +20,26 @@ func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
 		}
 	}
 
-	floor := elevio.GetFloor()
-	if floor == -1 {
-		initBetweenFloors(&elev)
-		//wait to arrive on floor
-		newFloor := <-drvFloorsCh
-		elevio.SetMotorDirection(elevio.MD_Stop)
-		elev.Floor = newFloor
-		elevio.SetFloorIndicator(newFloor)
-		elev.Dirn = elevio.MD_Stop
-		elev.Behaviour = elevator.EB_Idle
-
+	if elevio.GetFloor() == -1 {
+		elev = initBetweenFloors(elev, drvFloorsCh)
 	} else {
-		elev.Floor = floor
+		floor := <- drvFloorsCh
 		elevio.SetFloorIndicator(floor)
+		elev.Floor = floor
 	}
 
 	return elev
 }
-// When initialising between floors, the motor direction is set downwards.
-// When it reaches a floor it will then behave normaly.
-func initBetweenFloors(elev *elevator.Elevator) {
+
+func initBetweenFloors(elev elevator.Elevator, drvFloorsCh chan int) elevator.Elevator {
 	elevio.SetMotorDirection(elevio.MD_Down)
-	(*elev).Dirn = elevio.MD_Down
-	(*elev).Behaviour = elevator.EB_Moving
+
+	//wait to arrive on floor
+	newFloor := <-drvFloorsCh
+	elevio.SetMotorDirection(elevio.MD_Stop)
+	elevio.SetFloorIndicator(newFloor)
+	elev.Floor = newFloor
+	return elev 
 }
 
 // Handles button presses on a local level, by processing requests based on the
@@ -54,21 +51,17 @@ func requestButtonPress(elev *elevator.Elevator, btn_floor int, btn_type elevio.
 	switch (*elev).Behaviour {
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately((*elev), btn_floor, btn_type) {
-			// send clear to assigned orders
 			doorTimerStartCh <- true
 			*elev = clearLocalOrder(*elev, btn_floor, btn_type, completedOrderCH)
 		} else {
 			*elev = setLocalOrder(*elev, btn_floor, btn_type)
-			// (*elev).LocalOrders[btn_floor][btn_type] = true
 		}
 
 	case elevator.EB_Moving:
 		*elev = setLocalOrder(*elev, btn_floor, btn_type)
-		// (*elev).LocalOrders[btn_floor][btn_type] = true
 
 	case elevator.EB_Idle:
 		*elev = setLocalOrder(*elev, btn_floor, btn_type)
-		// (*elev).LocalOrders[btn_floor][btn_type] = true
 		var directionAndBehaviour elevator.DirnBehaviourPair = ChooseDirection((*elev))
 		(*elev).Dirn = directionAndBehaviour.Dirn
 		(*elev).Behaviour = directionAndBehaviour.Behaviour
@@ -106,13 +99,8 @@ func floorArrival(elev *elevator.Elevator, newFloor int, doorTimerStartCh, arriv
 	elevio.SetFloorIndicator((*elev).Floor)
 
 	if !(*elev).MotorStop {
-		select {
-		case arrivedOnFloorCh <- true:
-		default:
-		}
-
-	}
-	if (*elev).MotorStop {
+		arrivedOnFloorCh <- true
+	} else if (*elev).MotorStop {
 		fmt.Println("power back")
 		(*elev).MotorStop = false
 	}
@@ -126,10 +114,8 @@ func floorArrival(elev *elevator.Elevator, newFloor int, doorTimerStartCh, arriv
 			(*elev).LocalOrders = ClearAtCurrentFloor((*elev), completedOrderCH).LocalOrders
 			setCabLights(elev)
 			(*elev).Behaviour = elevator.EB_DoorOpen
-			// (*elev).Dirn = elevio.MD_Stop
 		} else {
 			departureFromFloorCh <- true
-
 		}
 	}
 }
