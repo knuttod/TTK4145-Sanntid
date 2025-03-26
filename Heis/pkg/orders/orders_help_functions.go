@@ -11,7 +11,7 @@ import (
 	// "sort"
 )
 
-func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
+func assignedOrdersInit(id string) map[string][][]elevator.OrderState {
 	assignedOrders := map[string][][]elevator.OrderState{}
 
 	Orders := make([][]elevator.OrderState, numFloors)
@@ -27,59 +27,58 @@ func AssignedOrdersInit(id string) map[string][][]elevator.OrderState {
 }
 
 // Updates state in assignedOrders for local elevator if it is behind remoteElevators
-func orderMerger(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, remoteId string) map[string][][]elevator.OrderState {
+func orderMerger(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, remoteId string) map[string][][]elevator.OrderState {
 	var currentState elevator.OrderState
 	var updateState elevator.OrderState
 
-	for _, id := range activeElevators {
+	for _, elevId := range activeElevators {
 		for floor := range numFloors {
 			for btn := range numBtns {
-				currentState = assignedOrders[id][floor][btn]
-				updateState = elevators[remoteId].AssignedOrders[id][floor][btn]
+				currentState = assignedOrders[elevId][floor][btn]
+				updateState = elevators[remoteId].AssignedOrders[elevId][floor][btn]
 
 				switch currentState {
 				case elevator.Ordr_None:
 					//bottom of cyclic counter
 					switch updateState {
 					case elevator.Ordr_Unconfirmed:
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Unconfirmed)
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Unconfirmed)
 					case elevator.Ordr_Confirmed:
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Confirmed)
-						//Not this case to prevent un resetting cyclic counter
-						// case elevator.Ordr_Complete:
-						// 	assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Complete)
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Confirmed)
+					case elevator.Ordr_Complete:
+						// do nothing to prevent un-resetting cyclic counter
 					}
 
 				case elevator.Ordr_Unconfirmed:
 					switch updateState {
 					case elevator.Ordr_Confirmed:
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Confirmed)
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Confirmed)
 					case elevator.Ordr_Complete:
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Complete)
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Complete)
 					}
 
 				case elevator.Ordr_Confirmed:
 					switch updateState {
 					case elevator.Ordr_Complete:
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_Complete)
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Complete)
 					}
 
 				case elevator.Ordr_Complete:
 					//top of cyclic counter, reset if synced or already reset
 					switch updateState {
 					case elevator.Ordr_None:
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_None)
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_None)
 					case elevator.Ordr_Complete:
 						//resets cyclic counter if all elevators have complete
-						if ordersSynced(assignedOrders, elevators, activeElevators, selfId, id, floor, btn)  {
-							assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_None)
+						if ordersSynced(assignedOrders, elevators, activeElevators, elevId, floor, btn)  {
+							assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_None)
 						}
 					}
 
 				case elevator.Ordr_Unknown:
-					//set to same state as remote
 					if updateState != elevator.Ordr_Unknown {
-						assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, updateState)
+						//set to same state as remote
+						assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, updateState)
 					}
 				}
 			}
@@ -89,7 +88,7 @@ func orderMerger(assignedOrders map[string][][]elevator.OrderState, elevators ma
 }
 
 // Check if all nodes on nettwork are synced on certain order
-func ordersSynced(AssignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int) bool {
+func ordersSynced(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, elevId string, floor, btn int) bool {
 	if len(activeElevators) == 1 {
 		return true
 	}
@@ -98,7 +97,7 @@ func ordersSynced(AssignedOrders map[string][][]elevator.OrderState, Elevators m
 		if elev == selfId {
 			continue
 		}
-		if AssignedOrders[id][floor][btn] != Elevators[elev].AssignedOrders[id][floor][btn] {
+		if assignedOrders[elevId][floor][btn] != elevators[elev].AssignedOrders[elevId][floor][btn] {
 			return false
 		}
 	}
@@ -106,53 +105,44 @@ func ordersSynced(AssignedOrders map[string][][]elevator.OrderState, Elevators m
 }
 
 // Should start order when elevators are synced and order is unconfirmed or confirmed and no order in elevators map
-func shouldStartLocalOrder(AssignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, floor, btn int) bool {
-	return ordersSynced(AssignedOrders, Elevators, activeElevators, selfId, selfId, floor, btn) && (((AssignedOrders)[selfId][floor][btn] == elevator.Ordr_Unconfirmed) || (((AssignedOrders)[selfId][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn]))
+func shouldStartLocalOrder(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, floor, btn int) bool {
+	return ordersSynced(assignedOrders, elevators, activeElevators, selfId, floor, btn) && (((assignedOrders)[selfId][floor][btn] == elevator.Ordr_Unconfirmed) || (((assignedOrders)[selfId][floor][btn] == elevator.Ordr_Confirmed) && !elevators[selfId].Elevator.LocalOrders[floor][btn]))
 }
 
 // If FSM is ready, set order to confirmed and starts order if it should start
-func confirmAndStartOrder(assignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int,
+func confirmAndStartOrder(assignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, elevId string, floor, btn int,
 	localAssignedOrder chan elevio.ButtonEvent) map[string][][]elevator.OrderState{
-	// if ordersSynced(*AssignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Unconfirmed) || (((*AssignedOrders)[id][floor][btn] == elevator.Ordr_Confirmed) && !Elevators[selfId].Elevator.LocalOrders[floor][btn])) {
-	if shouldStartLocalOrder(assignedOrders, Elevators, activeElevators, selfId, floor, btn) {
+
+	if shouldStartLocalOrder(assignedOrders, Elevators, activeElevators, floor, btn) {
 		order := elevio.ButtonEvent{
 			Floor:  floor,
 			Button: elevio.ButtonType(btn),
 		}
+		//sends order to fsm if it is ready to take it
 		select {
 		case localAssignedOrder <- order:
-			// fmt.Println("start")
 			assignedOrders[selfId] = setOrder(assignedOrders[selfId], floor, btn, elevator.Ordr_Confirmed)
 		default:
-			//non blocking
 		}
-
 	}
 	return assignedOrders
 }
 
-// func clearOrder(assignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId, id string, floor, btn int) map[string][][]elevator.OrderState{
-// 	if ordersSynced(assignedOrders, Elevators, activeElevators, selfId, id, floor, btn) && ((assignedOrders)[id][floor][btn] == elevator.Ordr_Complete) {
-// 		assignedOrders[id] = setOrder(assignedOrders[id], floor, btn, elevator.Ordr_None)
-// 		//kanskje sånn her. Var sånn før
-// 		assignedOrders[selfId] = setOrder(assignedOrders[selfId], floor, btn, elevator.Ordr_None)
-// 	}
-// 	return assignedOrders
-// }
-
 // Updates remoteElevator map and adds entries for remote Elevator in assignedOrders map for local elevator if they do not exist yet.
-func updateFromRemoteElevator(AssignedOrders *map[string][][]elevator.OrderState, Elevators *map[string]elevator.NetworkElevator, remoteElevatorState message.ElevatorStateMsg) {
+func updateFromRemoteElevator(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, remoteElevatorState message.ElevatorStateMsg) (map[string][][]elevator.OrderState, map[string]elevator.NetworkElevator) {
 	remoteElevator := remoteElevatorState.NetworkElevator
-	(*Elevators)[remoteElevatorState.Id] = remoteElevator
+	elevators[remoteElevatorState.Id] = remoteElevator
 
-	_, exists := (*AssignedOrders)[remoteElevatorState.Id]
+	_, exists := assignedOrders[remoteElevatorState.Id]
 	if !exists {
-		(*AssignedOrders)[remoteElevatorState.Id] = remoteElevator.AssignedOrders[remoteElevatorState.Id]
+		assignedOrders[remoteElevatorState.Id] = remoteElevator.AssignedOrders[remoteElevatorState.Id]
 	}
+
+	return assignedOrders, elevators
 }
 
-// Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork
-func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) bool {
+// Needs this check to prevent index error. Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork. 
+func assignedOrdersKeysCheck(elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) bool {
 
 	if len(activeElevators) == 0 {
 		return false
@@ -166,9 +156,8 @@ func assignedOrdersKeysCheck(Elevators map[string]elevator.NetworkElevator, acti
 	}
 
 	var assignedOrdersKeys map[string]bool
-	// for _, elev := range Elevators {
 	for _, id := range activeElevators {
-		elev := Elevators[id]
+		elev := elevators[id]
 		if len(activeElevators) > len(elev.AssignedOrders) {
 			return false
 		}
@@ -194,33 +183,24 @@ func setOrder(orders [][]elevator.OrderState, floor, btn int, state elevator.Ord
 }
 
 //Variant with deepCopy
-// func setOrder(assignedOrders [][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) [][]elevator.OrderState{
-// 	copy := deepcopy.DeepCopy2DSlice(assignedOrders)
+// func setOrder(orders [][]elevator.OrderState, elevId string, floor, btn int, state elevator.OrderState) [][]elevator.OrderState{
+// 	copy := deepcopy.DeepCopy2DSlice(orders)
 // 	copy[floor][btn] = state
 // 	return copy
 // }
+
 
 func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, p peers.PeerUpdate) map[string][][]elevator.OrderState{
 
 	//detects disconnected elevators and reassigns their orders
 	if len(p.Lost) > 0 {
 
-		//kanskje dette gjør at ordre ikke blir reassigned? Teste dette
-		//tanken er at en ny heis ikke skal dø
 		if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 			reassignOrdersFromDisconnectedElevators(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators),  p.Lost, activeElevators, selfId)
-			// reassignOrders(deepcopy.DeepCopyElevatorsMap(*Elevators), assignedOrders, activeElevators, selfId)
-			// for _, elev := range p.Lost {
-			// 	for floor := range numFloors {
-			// 		for btn := range numBtns - 1 {
-			// 			setOrder(assignedOrders, elev, floor, btn, elevator.Ordr_Unknown)
-			// 		}
-			// 	}
-			// }
 		}
 	}
 
-	//if elevator(s) has only disconnected and reconnects it has its latest info about its order and to not override it having no order the order is set to complete
+	//if elevator(s) has only disconnected and reconnects (not crashed) it has its latest info about its order and to not override it having no order the order is set to complete
 	if len(p.New) > 0 {
 		for floor := range numFloors {
 			if (assignedOrders)[selfId][floor][int(elevio.BT_Cab)] == elevator.Ordr_None {

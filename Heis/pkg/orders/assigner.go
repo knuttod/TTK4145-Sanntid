@@ -62,7 +62,7 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 	if (len(activeElevators) < 2) || (order.Button == elevio.BT_Cab) {
 		
 		//should only take order if elevators are synced and the orders is not already taken
-		if ordersSynced(assignedOrders, elevators, activeElevators, selfId, selfId, order.Floor, int(order.Button)) && 
+		if ordersSynced(assignedOrders, elevators, activeElevators, selfId, order.Floor, int(order.Button)) && 
 		((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_None) || 
 		(assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Unknown)){
 		// !((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Complete) ||
@@ -98,7 +98,7 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 			minElev = elev
 		}
 	}
-	if ordersSynced(assignedOrders, elevators, activeElevators, selfId, minElev, order.Floor, int(order.Button)) && 
+	if ordersSynced(assignedOrders, elevators, activeElevators, minElev, order.Floor, int(order.Button)) && 
 		((assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_None) || 
 		(assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_Unknown)){
 	// if ((assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_None) || (assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_Unknown)) && ordersSynced(assignedOrders, elevators, activeElevators, selfId, minElev, order.Floor, int(order.Button)) {
@@ -125,7 +125,7 @@ func cost(elev elevator.Elevator) int {
 
 			}
 		case elevator.EB_Moving:
-			duration += TravelTime / 2 //dersom heisen er i beveglse legger vi til en kostand
+			duration += travelTime / 2 //dersom heisen er i beveglse legger vi til en kostand
 			elev.Floor += int(elev.Dirn)
 		case elevator.EB_DoorOpen:
 			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
@@ -151,7 +151,7 @@ func cost(elev elevator.Elevator) int {
 				}
 			}
 			elev.Floor += int(elev.Dirn) //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
-			duration += TravelTime       //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
+			duration += travelTime       //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
 		}
 		//		return 999
 

@@ -22,8 +22,9 @@ import (
 // define in config
 var (
 	numFloors   int
-	numBtns  int
-	TravelTime int
+	numBtns  	int
+	travelTime 	int
+	selfId 		string
 )
 
 // inits global variables from the config file
@@ -34,20 +35,23 @@ func init() {
 	}
 	numFloors = cfg.NumFloors // Preserving your exact naming
 	numBtns = cfg.NumBtns
-	TravelTime = cfg.TravelTime
+	travelTime = cfg.TravelTime
 }
 
 // "Main" function for orders. Takes a ButtonEvent from fsm on localRequest channel when a button is pushed
 // and sends an ButtonEvent on localAssignedOrder channel if this eleveator should take order
 // Updates local assignedOrders from a remoteElevator sent on elevatorStateCh.
 // Also checks if an order to be done by this elevator should be started or not
-func OrderHandler(selfId string,
-	localAssignedOrder chan elevio.ButtonEvent, buttonPressCH, completedOrderCH chan elevio.ButtonEvent,
-	remoteElevatorCh chan message.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate, nettworkDisconnectCh chan bool,
+func OrderHandler(id string,
+	startLocalOrderCh chan elevio.ButtonEvent, buttonPressCH, completedLocalOrderCH chan elevio.ButtonEvent,
+	remoteElevatorCh chan message.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
-	assignedOrders := AssignedOrdersInit(selfId)
+	selfId = id
+
+	assignedOrders := assignedOrdersInit(selfId)
 	elev := <-fsmToOrdersCH
+
 
 	elevators := map[string]elevator.NetworkElevator{}
 	elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: assignedOrders}
@@ -61,13 +65,11 @@ func OrderHandler(selfId string,
 		case elev := <-fsmToOrdersCH:
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: assignedOrders}
 		case btn_input := <-buttonPressCH:
-			// fmt.Println("assign")
 			if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 				assignedOrders = assignOrder(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators), activeElevators, selfId, btn_input)
 				elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 			}
-		case completed_order := <-completedOrderCH:
-			// fmt.Println("done")
+		case completed_order := <-completedLocalOrderCH:
 			if assignedOrders[selfId][completed_order.Floor][int(completed_order.Button)] == elevator.Ordr_Confirmed {
 				assignedOrders[selfId] = setOrder(assignedOrders[selfId], completed_order.Floor, int(completed_order.Button), elevator.Ordr_Complete)
 				elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
@@ -81,34 +83,20 @@ func OrderHandler(selfId string,
 			activeElevators = p.Peers
 			peerUpdateHandler(assignedOrders, elevators, activeElevators, selfId, p)
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
+
 		case remoteElevatorState := <-remoteElevatorCh: //sender hele tiden
-			// fmt.Println("msg")
 			if remoteElevatorState.Id != selfId {
-				// fmt.Println("remote")
-				updateFromRemoteElevator(&assignedOrders, &elevators, remoteElevatorState)
+				assignedOrders, elevators = updateFromRemoteElevator(assignedOrders, elevators, remoteElevatorState)
 				if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
-					// fmt.Println("merge")
-					orderMerger(assignedOrders, elevators, activeElevators, selfId, remoteElevatorState.Id)
+					assignedOrders = orderMerger(assignedOrders, elevators, activeElevators, remoteElevatorState.Id)
 
 					// reassign orders if remote elevator have been obstructed or gotten a motorstop
-
-					//denne fjerner hall calls fra en heis som kobler seg på igjen
 					assignedOrders = reassignOrdersFromUnavailable(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators), activeElevators, selfId)
-					// reassignOrders(deepcopy.DeepCopyElevatorsMap(elevators), &assignedOrders, activeElevators, selfId)
 					elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 				}
 			}
-		case <-nettworkDisconnectCh:
-			//To make sure the for loops run even when not reciving remoteElevatorState from peers.reciever
-			fmt.Println("disconnected")
-			activeElevators = []string{selfId}
-			// reassignOrdersFromDisconnectedElevators()
 		}
 
-		//kanskje kjøre reassign orders her
-		// if assignedOrdersKeysCheck(elevators, activeElevators, selfId) && (len(activeElevators) > 1){
-		// 	reassignOrders(elevators, &assignedOrders, activeElevators, selfId)
-		// }
 
 		for floor := range numFloors {
 			for btn := range numBtns {
@@ -123,19 +111,14 @@ func OrderHandler(selfId string,
 				// 	// }
 				// // 	// fmt.Println(elev, ": motorstop ", elevators[elev].Elevator.MotorStop)
 				// }
-				// fmt.Println("Local: ", assignedOrders)
-				// fmt.Println("Remote: ", remoteElevatorState.NetworkElevator.AssignedOrders)
-				// fmt.Println("own: ", elevators[selfId].Elevator.LocalOrders)
-				// if len(activeElevators) == 1 {
-				// 	clearOrder(&assignedOrders, elevators, activeElevators, selfId, selfId, floor, btn)
-				// }
+
 				if len(activeElevators) == 1 {
 					if (activeElevators[0] == selfId) && (assignedOrders[selfId][floor][btn] == elevator.Ordr_Complete){
 						assignedOrders[selfId] = setOrder(assignedOrders[selfId], floor, btn, elevator.Ordr_None)
 					}
 				}
 				if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
-					assignedOrders = confirmAndStartOrder(assignedOrders, elevators, activeElevators, selfId, selfId, floor, btn, localAssignedOrder)
+					assignedOrders = confirmAndStartOrder(assignedOrders, elevators, activeElevators, selfId, floor, btn, startLocalOrderCh)
 				}
 			}
 		}
@@ -143,7 +126,5 @@ func OrderHandler(selfId string,
 		if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 			activeHallLights = setHallLights(assignedOrders, activeElevators, activeHallLights)
 		}
-		// duration := time.Since(start)
-		// fmt.Println("dur", duration)
 	}
 }

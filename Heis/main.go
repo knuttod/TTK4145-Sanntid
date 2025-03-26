@@ -35,7 +35,6 @@ func main() {
 	completedOrderCh := make(chan elevio.ButtonEvent)
 	fsmToOrdersCH := make(chan elevator.Elevator)
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
-	networkDisconnectCh := make(chan bool)
 	transmitterToRecivierSkipCh := make(chan bool)
 
 	// Launch main elevator system components as goroutines
@@ -43,7 +42,7 @@ func main() {
 	go peers.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
 	go fsm.Fsm(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh,
-		remoteElevatorCh, peerUpdateCh, networkDisconnectCh, fsmToOrdersCH, ordersToPeersCH)
+		remoteElevatorCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)
 
 
 	select {}

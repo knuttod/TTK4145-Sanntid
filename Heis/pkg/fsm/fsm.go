@@ -31,9 +31,9 @@ func init() {
 	motorStopTimeout = cfg.MotorStopTimeout * time.Second
 }
 
-// FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCH, localRequestCH and completedOrderCH.
+// FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCh, localRequestCH and completedOrderCh.
 // Also takes input from elevio on drv channels. Interacts with external timer on doorTimerStartCH and doorTimerFinishedCH
-func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan elevio.ButtonEvent, fsmToOrdersCH chan elevator.Elevator) {
+func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan elevio.ButtonEvent, fsmToOrdersCh chan elevator.Elevator) {
 
 	drvButtonsCh := make(chan elevio.ButtonEvent)
 	drvFloorsCh := make(chan int)
@@ -59,18 +59,18 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 	for {
 		//sends a deepcopy to ensure correct message passing
-		fsmToOrdersCH <- deepcopy.DeepCopyElevatorStruct(elev)
+		fsmToOrdersCh <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
 		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
 		case button_input := <-drvButtonsCh:
-			buttonPressCH <- button_input
+			buttonPressCh <- button_input
 
 		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
-		case Order := <-localAssignedOrderCH:
-			elev = requestButtonPress(elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCH)
+		case Order := <-localAssignedOrderCh:
+			elev = requestButtonPress(elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCh)
 
 		case newFloor := <-drvFloorsCh:
-			elev = floorArrival(elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+			elev = floorArrival(elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCh)
 
 		case obstruction := <-drvObstrCh:
 			if obstruction {
@@ -91,7 +91,7 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 
 		case <-doorTimerFinishedCh:
 			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {
-				elev = doorTimeout(elev, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCH)
+				elev = doorTimeout(elev, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCh)
 			}
 		}
 	}
@@ -104,13 +104,13 @@ func Fsm(id string, localAssignedOrderCH, buttonPressCH, completedOrderCH chan e
 // the request state accordingly. The function also manages the door timer, sends updated
 // elevator states over UDP, and updates the button lights.
 func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.ButtonType, 
-	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately(elev, btnFloor, btnType) {
 			doorTimerStartCh <- true
-			elev = clearLocalOrder(elev, btnFloor, btnType, completedOrderCH)
+			elev = clearLocalOrder(elev, btnFloor, btnType, completedOrderCh)
 		} else {
 			elev = setLocalOrder(elev, btnFloor, btnType)
 		}
@@ -129,7 +129,7 @@ func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.But
 		case elevator.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			doorTimerStartCh <- true
-			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCH).LocalOrders
+			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCh).LocalOrders
 
 			// To make sure both hall call up and down are not cleared when an elevator has no orders and gets both calls in the floor it is currently at
 			if btnType == elevio.BT_HallUp {
@@ -153,7 +153,7 @@ func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.But
 // When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
 // to stop. if it is supposed to stop it stops, clears the floor then opens the door.
 func floorArrival(elev elevator.Elevator, newFloor int, 
-	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	elev.Floor = newFloor
 	elevio.SetFloorIndicator(elev.Floor)
@@ -171,7 +171,7 @@ func floorArrival(elev elevator.Elevator, newFloor int,
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
 			doorTimerStartCh <- true
-			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCH).LocalOrders
+			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCh).LocalOrders
 			setCabLights(elev)
 			elev.Behaviour = elevator.EB_DoorOpen
 		} else {
@@ -186,7 +186,7 @@ func floorArrival(elev elevator.Elevator, newFloor int,
 // runned twice, once at the begining of the timer initialisation and
 // once when the door is supposed to close to check if the obstruction
 // is active.
-func doorTimeout(elev elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+func doorTimeout(elev elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
 	case elevator.EB_DoorOpen:
@@ -197,7 +197,7 @@ func doorTimeout(elev elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, dep
 		switch elev.Behaviour {
 		case elevator.EB_DoorOpen:
 			doorTimerStartCh <- true
-			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCH).LocalOrders
+			elev.LocalOrders = ClearAtCurrentFloor(elev, completedOrderCh).LocalOrders
 			setCabLights(elev)
 
 		case elevator.EB_Moving:
