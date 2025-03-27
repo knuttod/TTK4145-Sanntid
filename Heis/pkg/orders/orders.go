@@ -106,18 +106,6 @@ func OrderHandler(id string,
 
 		for floor := range numFloors {
 			for btn := range numBtns {
-				// fmt.Println("Active: ", activeElevators)
-				// for _, elev := range activeElevators {
-				// 	// for elev := range assignedOrders {
-				// 	// fmt.Println(elev, ":", elevators[elev].AssignedOrders)
-				// 	// fmt.Println(elev, ":", elevators[elev].Elevator.Floor)
-				// 	// fmt.Println(elev, ":", elevators[elev].Elevator.Dirn)
-				// 	// if elevators[elev].Elevator.Obstructed {
-				// 	// 	fmt.Println(elev, ": obstructed ", elevators[elev].Elevator.Obstructed)
-				// 	// }
-				// // 	// fmt.Println(elev, ": motorstop ", elevators[elev].Elevator.MotorStop)
-				// }
-
 				// resets cyclic counter if its only elevator on network
 				if len(activeElevators) == 1 {
 					if (activeElevators[0] == selfId) && (assignedOrders[selfId][floor][btn] == elevator.Ordr_Complete) {

@@ -18,8 +18,7 @@ const (
 	Ordr_Unconfirmed OrderState = 1
 	Ordr_Confirmed   OrderState = 2
 	Ordr_Complete    OrderState = 3
-
-	Ordr_Unknown OrderState = -1
+	Ordr_Unknown 	 OrderState = -1
 )
 
 type ElevatorBehaviour int
