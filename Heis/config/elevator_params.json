@@ -1,7 +1,7 @@
 {
     "NumFloors": 4,
     "NumBtns": 3,
-    "TravelTime" : 10,
+    "TravelTime" : 3,
     "DoorOpenDuration": 3,
     "motorStopTimeout" : 5
 }

@@ -6,10 +6,10 @@ import (
 	"Heis/pkg/fsm"
 	"fmt"
 	"math"
-	// "fmt"
-	//"strconv"
 )
-//reassigns orders from elevators on nettwork with either motorstop or obstruction
+
+
+//reassigns orders from elevators on nettwork, with either motorstop or obstruction
 func reassignOrdersFromUnavailable(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) map[string][][]elevator.OrderState {
 	for _, elevId := range activeElevators {
 		elev := elevators[elevId].Elevator
@@ -49,7 +49,7 @@ func reassignOrdersFromDisconnectedElevators(assignedOrders map[string][][]eleva
 					fmt.Println("reassign from disconnect")
 					assignedOrders = assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
 				}
-				//sets all hall orders to unkwon to ensure correct merging of orders when elevator reconnects
+				//sets all hall orders to unkown to ensure correct merging of orders when elevator reconnects
 				assignedOrders[elevId] = setOrder(assignedOrders[elevId], floor, btn, elevator.Ordr_Unknown)
 			}
 		}
@@ -57,42 +57,36 @@ func reassignOrdersFromDisconnectedElevators(assignedOrders map[string][][]eleva
 	return assignedOrders
 }
 
+// Assigns an order to the elevator on the network with lowest cost. 
+// Unavailable elevators (obstructed/motorstop) is not assigned any orders. 
+// If another available elevator already has the order active the order is not assigned again. 
 func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, order elevio.ButtonEvent) map[string][][]elevator.OrderState {
 
 	if (len(activeElevators) < 2) || (order.Button == elevio.BT_Cab) {
 		
-		//should only take order if elevators are synced and the orders is not already taken
+		//should only take order if elevators are synced and the orders is not already started/taken
 		if ordersSynced(assignedOrders, elevators, activeElevators, selfId, order.Floor, int(order.Button)) && 
 		((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_None) || 
 		(assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Unknown)){
-		// !((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Complete) ||
-		// ((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Confirmed) && elevators[selfId].Elevator.LocalOrders[order.Floor][order.Button])){
-		// ((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_None) || 
-		// (assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Unknown) || 
-		// ((assignedOrders[selfId][order.Floor][order.Button] == elevator.Ordr_Confirmed) && elevators[selfId].Elevator.LocalOrders[order.Floor][order.Button])) {
 			assignedOrders[selfId] = setOrder(assignedOrders[selfId], order.Floor, int(order.Button), elevator.Ordr_Unconfirmed)
 		}
 		return assignedOrders
 	}
 
 	
-
-	//High cost to ensure that an elevator that is not obstructed or motorstop is chosen
 	minCost := 99999
 	elevCost := 0
-
 	// sets self as min to prevent index error if no elevators are available
 	minElev := selfId
 
 	for _, elev := range activeElevators {
-
-
+		
 		//unaivalable elevators should not be assigned orders
 		if (elevators[elev].Elevator.Obstructed) || (elevators[elev].Elevator.MotorStop) {
 			continue
 		}
 
-		//Checks if order is already taken by another elevator. In this case the order should not be assigned again
+		// Checks if order is already taken by another elevator. In this case the order should not be assigned again
 		// This check is after the unavailable elevators to prevent not taking orders from these elevators. 
 		activeOrders := elevators[elev].AssignedOrders[elev]
 		if (activeOrders[order.Floor][order.Button] == elevator.Ordr_Unconfirmed) || (activeOrders[order.Floor][order.Button] == elevator.Ordr_Confirmed) {
@@ -104,15 +98,19 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 		distance := math.Abs(float64(elevators[elev].Elevator.Floor) - float64(order.Floor))
 		elevCost += int(distance) * 3
 
+		fmt.Println(elev, ":", elevCost)
+
+		//choose elevator with lower cost
 		if elevCost < minCost {
 			minCost = elevCost
 			minElev = elev
 		}
 	}
+
+	//should only take order if elevators are synced and the orders is not already started/taken
 	if ordersSynced(assignedOrders, elevators, activeElevators, minElev, order.Floor, int(order.Button)) && 
 		((assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_None) || 
 		(assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_Unknown)){
-	// if ((assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_None) || (assignedOrders[minElev][order.Floor][order.Button] == elevator.Ordr_Unknown)) && ordersSynced(assignedOrders, elevators, activeElevators, selfId, minElev, order.Floor, int(order.Button)) {
 		assignedOrders[minElev] = setOrder(assignedOrders[minElev], order.Floor, int(order.Button), elevator.Ordr_Unconfirmed)
 	}
 	return assignedOrders
@@ -125,7 +123,6 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 func cost(elev elevator.Elevator) int {
 
 		duration := 0
-
 
 		switch elev.Behaviour {
 		case elevator.EB_Idle:
@@ -191,17 +188,10 @@ func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 				elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 			}
 			elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
-		// case elevio.MD_Stop:
-		// 	elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
-		// 	elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
-		// 	elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
-		default:
+		case elevio.MD_Stop:
 			elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 			elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
-			//elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
 		}
-	default:
-
 	}
 	return elev
 }

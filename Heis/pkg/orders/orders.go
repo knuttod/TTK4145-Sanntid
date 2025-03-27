@@ -6,11 +6,8 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/network/message"
 	"Heis/pkg/network/peers"
-	"log"
-
-	// "Heis/pkg/timer"
 	"Heis/pkg/deepcopy"
-	// "time"
+	"log"
 	"fmt"
 )
 
@@ -87,6 +84,7 @@ func OrderHandler(id string,
 			fmt.Printf("  Peers:    %q\n", p.Peers)
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
+
 			activeElevators = p.Peers
 			peerUpdateHandler(assignedOrders, elevators, activeElevators, selfId, p)
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
@@ -98,6 +96,7 @@ func OrderHandler(id string,
 				assignedOrders, elevators = updateFromRemoteElevator(assignedOrders, elevators, remoteElevatorState)
 
 				if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
+					//merges orders according to cyclic counter
 					assignedOrders = orderMerger(assignedOrders, elevators, activeElevators, remoteElevatorState.Id)
 
 					// reassign orders if remote elevator have been obstructed or gotten a motorstop
@@ -130,7 +129,7 @@ func OrderHandler(id string,
 
 				//sends assigned orders to fsm
 				if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
-					assignedOrders = confirmAndStartOrder(assignedOrders, elevators, activeElevators, selfId, floor, btn, startLocalOrderCh)
+					assignedOrders = confirmAndStartLocalOrder(assignedOrders, elevators, activeElevators, floor, btn, startLocalOrderCh)
 				}
 			}
 		}
