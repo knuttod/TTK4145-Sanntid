@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"log"
 	"time"
-	// "fmt"
 )
 
-// define in config
+// defined in config
 var (
-	numFloors          int
-	numBtns         	 int
+	numFloors         int
+	numBtns           int
 	DoorTimerInterval time.Duration
 	motorStopTimeout  time.Duration
 )
@@ -31,9 +30,9 @@ func init() {
 	motorStopTimeout = cfg.MotorStopTimeout * time.Second
 }
 
-// FSM handles core logic of a single Elevator. 
+// FSM handles core logic of a single Elevator.
 // Interacts with orders via localAssignedOrderCh, localRequestCH and completedOrderCh.
-// Also takes input from elevio on drv channels. 
+// Also takes input from elevio on drv channels.
 func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan elevio.ButtonEvent, fsmToOrdersCh chan elevator.Elevator) {
 
 	// Elevio
@@ -101,13 +100,12 @@ func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan e
 	}
 }
 
-
 // Handles button presses on a local level, by processing requests based on the
 // elevator's current behavior. If the elevator is idle, it determines the next action
 // (moving or opening doors). If the elevator is moving or has doors open, it updates
 // the request state accordingly. The function also manages the door timer, sends updated
 // elevator states over UDP, and updates the button lights.
-func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.ButtonType, 
+func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.ButtonType,
 	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
@@ -156,7 +154,7 @@ func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.But
 
 // When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
 // to stop. if it is supposed to stop it stops, clears the floor then opens the door.
-func floorArrival(elev elevator.Elevator, newFloor int, 
+func floorArrival(elev elevator.Elevator, newFloor int,
 	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	elev.Floor = newFloor
@@ -217,4 +215,3 @@ func doorTimeout(elev elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, dep
 	}
 	return elev
 }
-
