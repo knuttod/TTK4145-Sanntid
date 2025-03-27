@@ -6,7 +6,7 @@ import (
 )
 
 //Creates an elevator struct and ensures the elevator starts in a floor. Lights are cleared.
-func fsmInit(drvFloorsCh chan int) elevator.Elevator {
+func fsmInit(drvFloorsCh <-chan int) elevator.Elevator {
 	
 	//initialize elevator struct
 	elev := elevator.Elevator_init(numFloors, numBtns)
@@ -163,8 +163,8 @@ func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elev
 
 // Clears at current floor and sends that the order is complete to the order module.
 func ClearAtCurrentFloor(elev elevator.Elevator, 
-	completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
-		
+	completedOrderCH chan<- elevio.ButtonEvent) elevator.Elevator {
+
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
 		for btn := range numBtns{
@@ -202,7 +202,7 @@ func setLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType) ele
 
 // Sets the corresponding order in the localOrder 2D slice to false and sends message of completed order to Orders
 func clearLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType, 
-	completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
+	completedOrderCH chan<- elevio.ButtonEvent) elevator.Elevator {
 
 	elev.LocalOrders[floor][btn] = false
 	//send on channel to orders that an order is completed/cleared

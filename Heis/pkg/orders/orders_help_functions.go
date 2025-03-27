@@ -108,7 +108,7 @@ func shouldStartLocalOrder(assignedOrders map[string][][]elevator.OrderState, el
 
 // If FSM is ready, set order to confirmed and starts order if it should start
 func confirmAndStartLocalOrder(assignedOrders map[string][][]elevator.OrderState, Elevators map[string]elevator.NetworkElevator, activeElevators []string, floor, btn int,
-	localAssignedOrder chan elevio.ButtonEvent) map[string][][]elevator.OrderState{
+	localAssignedOrder chan<- elevio.ButtonEvent) map[string][][]elevator.OrderState{
 
 	if shouldStartLocalOrder(assignedOrders, Elevators, activeElevators, floor, btn) {
 		order := elevio.ButtonEvent{
@@ -140,7 +140,7 @@ func updateFromRemoteElevator(assignedOrders map[string][][]elevator.OrderState,
 
 // Needs this check to prevent index error. Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork. 
 func assignedOrdersKeysCheck(elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) bool {
-	
+
 	if len(activeElevators) == 0 {
 		return false
 	}

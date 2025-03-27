@@ -39,9 +39,9 @@ func init() {
 // Handles reassigning and handling of connection and disconnection of elevators given from the peers update.
 // Checks if an order should be started by the local elevator and sends this to the FSM module if it is not busy.
 func OrderHandler(id string,
-	startLocalOrderCh chan elevio.ButtonEvent, buttonPressCH, completedLocalOrderCH chan elevio.ButtonEvent,
-	remoteElevatorUpdateCh chan network.ElevatorStateMsg, peerUpdateCh chan network.PeerUpdate,
-	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
+	startLocalOrderCh chan<- elevio.ButtonEvent, buttonPressCH, completedLocalOrderCH <-chan elevio.ButtonEvent,
+	remoteElevatorUpdateCh <-chan network.ElevatorStateMsg, peerUpdateCh <-chan network.PeerUpdate,
+	fsmToOrdersCH <-chan elevator.Elevator, ordersToPeersCH chan<- elevator.NetworkElevator) {
 
 	//sets global variable for module
 	selfId = id

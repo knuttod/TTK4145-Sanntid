@@ -33,7 +33,7 @@ func init() {
 // Interacts with orders via localAssignedOrderCh, localRequestCH and completedOrderCh.
 // Also takes input from elevio on drv channels.
 func Fsm(id string, 
-	localAssignedOrderCh, buttonPressCh, completedOrderCh chan elevio.ButtonEvent, fsmToOrdersCh chan elevator.Elevator) {
+	localAssignedOrderCh <-chan elevio.ButtonEvent, buttonPressCh, completedOrderCh chan<- elevio.ButtonEvent, fsmToOrdersCh chan<- elevator.Elevator) {
 
 	// Elevio
 	drvButtonsCh := make(chan elevio.ButtonEvent)
@@ -107,7 +107,7 @@ func Fsm(id string,
 // If the elevator is idle, it determines the next action (moving or opening doors). 
 // If the elevator is moving or has doors open, it updates the request state accordingly.
 func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.ButtonType,
-	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
+	doorTimerStartCh, departureFromFloorCh chan<- bool, completedOrderCh chan<- elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
 	case elevator.EB_DoorOpen:
@@ -158,7 +158,7 @@ func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.But
 // If it is supposed to stop it stops, clears the localOrders on the floor and then opens the door.
 // Sends to motorstop timer that it should stop and resets an eventual motorstop state
 func floorArrival(elev elevator.Elevator, newFloor int,
-	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
+	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan<- bool, completedOrderCh chan<- elevio.ButtonEvent) elevator.Elevator {
 
 	elev.Floor = newFloor
 	elevio.SetFloorIndicator(elev.Floor)
@@ -188,7 +188,7 @@ func floorArrival(elev elevator.Elevator, newFloor int,
 
 // Chooses next action for the elevator after the door is closed and the elevator is ready to move
 func doorTimeout(elev elevator.Elevator, 
-	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
+	doorTimerStartCh, departureFromFloorCh chan<- bool, completedOrderCh chan<- elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
 	case elevator.EB_DoorOpen:
