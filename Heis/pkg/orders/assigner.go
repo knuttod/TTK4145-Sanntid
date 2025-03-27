@@ -75,6 +75,8 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 		return assignedOrders
 	}
 
+	
+
 	//High cost to ensure that an elevator that is not obstructed or motorstop is chosen
 	minCost := 99999
 	elevCost := 0
@@ -84,10 +86,19 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 
 	for _, elev := range activeElevators {
 
+
 		//unaivalable elevators should not be assigned orders
 		if (elevators[elev].Elevator.Obstructed) || (elevators[elev].Elevator.MotorStop) {
 			continue
 		}
+
+		//Checks if order is already taken by another elevator. In this case the order should not be assigned again
+		// This check is after the unavailable elevators to prevent not taking orders from these elevators. 
+		activeOrders := elevators[elev].AssignedOrders[elev]
+		if (activeOrders[order.Floor][order.Button] == elevator.Ordr_Unconfirmed) || (activeOrders[order.Floor][order.Button] == elevator.Ordr_Confirmed) {
+			return assignedOrders
+		}
+
 		elevCost = cost(elevators[elev].Elevator)
 		//Adding distance to cost to differentate between elevators with same cost
 		distance := math.Abs(float64(elevators[elev].Elevator.Floor) - float64(order.Floor))
