@@ -4,6 +4,6 @@
     "TravelTime" : 3,
     "DoorOpenDuration": 3,
     "MotorStopTimeout" : 5,
-    "NetworkInterval" : 15,
+    "NetworkInterval" : 10,
     "NetworkTimeout" : 500
 }
