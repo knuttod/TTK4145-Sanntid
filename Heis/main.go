@@ -26,7 +26,8 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Check if user have selected the processPair option
+	// Check if user have selected the processPair option.
+	// The processPair option will only work on linux systems.
 	if processPairsFlag {
 		// Determine process role using processPairs
 		connection, err := processPairs.SetupUDPListener(backupPort)
@@ -39,8 +40,9 @@ func main() {
 			go processPairs.BackupSetup(id, port, connection, backupPort)
 			go processPairs.MonitorAndTakeOver(id, port, connection, backupPort)
 		}
-	} else {
 
+		// Otherwise the system will run without processPairs.
+	} else {
 		elevio.Init("localhost:"+port, cfg.NumFloors)
 
 		peerUpdateCh := make(chan network.PeerUpdate)
