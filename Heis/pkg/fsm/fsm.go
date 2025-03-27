@@ -59,7 +59,7 @@ func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan e
 	go doorTimer(DoorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
 	go motorStopTimer(motorStopTimeout, arrivedOnFloorCh, departureFromFloorCh, motorStopCh)
 
-	elev := fsmInit(id, drvFloorsCh)
+	elev := fsmInit(drvFloorsCh)
 
 	for {
 		//sends a deepcopy to ensure correct message passing

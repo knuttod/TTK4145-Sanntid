@@ -38,7 +38,6 @@ type Elevator struct {
 	MotorStop   bool
 	LocalOrders [][]bool
 
-	Id     string
 	Config struct {
 		ClearRequestVariant ClearRequestVariant
 	}
@@ -54,9 +53,9 @@ type DirnBehaviourPair struct {
 	Dirn      elevio.MotorDirection
 }
 
-// Initializes an elevator struct. All orders are by default set to 0/false
-func Elevator_init(N_floors, N_buttons int, id string) Elevator {
-	// initialize the (*e) struct
+// Initializes an elevator struct. 
+// All orders are by default set to 0/false.
+func Elevator_init(N_floors, N_buttons int) Elevator {
 	var elev Elevator
 	elev.Floor = -1
 	elev.Dirn = elevio.MD_Stop
@@ -71,8 +70,6 @@ func Elevator_init(N_floors, N_buttons int, id string) Elevator {
 			elev.LocalOrders[floor][btn] = false
 		}
 	}
-
-	elev.Id = id
 
 	elev.Config.ClearRequestVariant = CV_InDirn
 	return elev
