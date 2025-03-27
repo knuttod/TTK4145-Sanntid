@@ -10,10 +10,12 @@ import (
 // Config defines the structure of the configuration
 type Config struct {
 	NumFloors        int           `json:"NumFloors"`
-	NumBtns    		 int           `json:"NumBtns"`
+	NumBtns          int           `json:"NumBtns"`
 	TravelTime       int           `json:"TravelTime"`
 	DoorOpenDuration time.Duration `json:"DoorOpenDuration"`
 	MotorStopTimeout time.Duration `json:"motorStopTimeout"`
+	NetworkInterval  time.Duration `json:"NetworkInterval"`
+	NetworkTimeout   time.Duration `json:"NetworkTimeout"`
 }
 
 // Use to load Heis/config/elevator_params.json

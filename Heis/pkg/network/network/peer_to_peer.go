@@ -1,15 +1,16 @@
 package network
 
 import (
+	"Heis/pkg/config"
 	"Heis/pkg/elevator"
 	"Heis/pkg/network/conn"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"sort"
 	"time"
 )
-
 
 type PeerUpdate struct {
 	Peers []string
@@ -17,9 +18,21 @@ type PeerUpdate struct {
 	Lost  []string
 }
 
+// defined in config
+var (
+	interval time.Duration
+	timeout  time.Duration
+)
 
-const interval = 15 * time.Millisecond
-const timeout = 500 * time.Millisecond
+// inits global variables from the config file
+func init() {
+	cfg, err := config.LoadConfig("config/elevator_params.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	interval = cfg.NetworkInterval * time.Millisecond
+	timeout = cfg.NetworkTimeout * time.Millisecond
+}
 
 // Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
 // Keeps track of the conected elevators, and sends the elevatorstates on the elevatorStateCh to the order module, the ids are sent to main on the peerUpdate channel.
@@ -32,7 +45,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 
 	enable := true
 	for {
-		// Should only send message once in an interval. 
+		// Should only send message once in an interval.
 		// Also able to dissable and reanable sending.
 		select {
 		case enable = <-transmitEnable:
@@ -70,15 +83,12 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 	}
 }
 
-
-
 func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
 
 	conn := conn.DialBroadcastUDP(port)
-
 
 	for {
 		updated := false
@@ -90,17 +100,16 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 
 		// If there was a send error, probably due to network disconnection recieve message from itself
 		select {
-		case <- transmitterToRecivierSkipCh:
+		case <-transmitterToRecivierSkipCh:
 			msg.Id = selfId
 		default:
 			err := json.Unmarshal(buf[:n], &msg)
 			if err != nil {
 				continue // Ignore invalid messages
-			}			
+			}
 		}
 
 		id := msg.Id // Extract peer ID
-		
 
 		// Track peer presence
 		p.New = ""
@@ -136,7 +145,7 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 			peerUpdateCh <- p
 		}
 
-		// Forward the full elevator state to order module. 
+		// Forward the full elevator state to order module.
 		// Non blocking to prevent back up of reciever.
 		if (msg.Id != selfId) || (len(p.Peers) == 1) {
 			select {

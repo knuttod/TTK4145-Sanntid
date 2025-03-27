@@ -3,5 +3,7 @@
     "NumBtns": 3,
     "TravelTime" : 3,
     "DoorOpenDuration": 3,
-    "motorStopTimeout" : 5
+    "motorStopTimeout" : 5,
+    "NetworkInterval" : 15,
+    "NetworkTimeout" : 500
 }

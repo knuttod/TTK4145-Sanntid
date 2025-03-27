@@ -2,20 +2,20 @@ package orders
 
 import (
 	"Heis/pkg/config"
+	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/network/network"
-	"Heis/pkg/deepcopy"
-	"log"
 	"fmt"
+	"log"
 )
 
-// define in config
+// defined in config
 var (
-	numFloors   int
-	numBtns  	int
-	travelTime 	int
-	selfId 		string
+	numFloors  int
+	numBtns    int
+	travelTime int
+	selfId     string
 )
 
 // inits global variables from the config file
@@ -29,9 +29,9 @@ func init() {
 	travelTime = cfg.TravelTime
 }
 
-// "Main" function for orders. 
-// Handles synchronization of orders between elevators by using a cyclic counter in assignedOrders. 
-// This is a map with an entry for all elevator ever occuring on the nettwork. 
+// "Main" function for orders.
+// Handles synchronization of orders between elevators by using a cyclic counter in assignedOrders.
+// This is a map with an entry for all elevator ever occuring on the nettwork.
 // The entries are the orders for the corresponding elevator and there are these orders which are synchronised using a cyclic counter when getting information from another elevator.
 // Takes in button presses from FSM and assigns the order to an elevator.
 // Takes in completed orders from FSM and marks order as completed in assignedOrders.
@@ -48,7 +48,6 @@ func OrderHandler(id string,
 	assignedOrders := assignedOrdersInit(selfId)
 	elev := <-fsmToOrdersCH
 
-
 	elevators := map[string]elevator.NetworkElevator{}
 	elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: assignedOrders}
 
@@ -62,14 +61,14 @@ func OrderHandler(id string,
 		// Updates state of this elevator from fsm
 		case elev := <-fsmToOrdersCH:
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: assignedOrders}
-		
+
 		// Assigns order for cab or hall button press, forwarded from fsm
 		case btnInput := <-buttonPressCH:
 			if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 				assignedOrders = assignOrder(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators), activeElevators, selfId, btnInput)
 				elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 			}
-		
+
 		// Mark order as completed
 		case completedOrder := <-completedLocalOrderCH:
 			if assignedOrders[selfId][completedOrder.Floor][int(completedOrder.Button)] == elevator.Ordr_Confirmed {
@@ -88,7 +87,7 @@ func OrderHandler(id string,
 			peerUpdateHandler(assignedOrders, elevators, activeElevators, selfId, p)
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 
-		// Updates order and elevator information from other elevators on network. 
+		// Updates order and elevator information from other elevators on network.
 		case remoteElevatorState := <-remoteElevatorCh:
 			// Updates from itself are ignored, but keeps the select case from stalling
 			if remoteElevatorState.Id != selfId {
@@ -121,7 +120,7 @@ func OrderHandler(id string,
 
 				// resets cyclic counter if its only elevator on network
 				if len(activeElevators) == 1 {
-					if (activeElevators[0] == selfId) && (assignedOrders[selfId][floor][btn] == elevator.Ordr_Complete){
+					if (activeElevators[0] == selfId) && (assignedOrders[selfId][floor][btn] == elevator.Ordr_Complete) {
 						assignedOrders[selfId] = setOrder(assignedOrders[selfId], floor, btn, elevator.Ordr_None)
 					}
 				}
