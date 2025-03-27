@@ -4,17 +4,11 @@ import (
 	"Heis/pkg/config"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/network/message"
-	"Heis/pkg/network/peers"
+	"Heis/pkg/network/network"
 	"Heis/pkg/deepcopy"
 	"log"
 	"fmt"
 )
-
-// This module orders, handles all orders, either comming from a local button press or from updates on nettwork.
-// All elevators on the nettwork keeps track of the other elevators order in a map called AssignedOrders, where the keys are elevator id's
-// and the values are a 2d slice of assigned orders for the corresponding elevator implemented as a cyclic counter.
-// The module is responsible for synchronization of orders and assigning orders to the correct elevator.
 
 // define in config
 var (
@@ -35,13 +29,18 @@ func init() {
 	travelTime = cfg.TravelTime
 }
 
-// "Main" function for orders. Takes a ButtonEvent from fsm on localRequest channel when a button is pushed
-// and sends an ButtonEvent on localAssignedOrder channel if this eleveator should take order
-// Updates local assignedOrders from a remoteElevator sent on elevatorStateCh.
-// Also checks if an order to be done by this elevator should be started or not
+// "Main" function for orders. 
+// Handles synchronization of orders between elevators by using a cyclic counter in assignedOrders. 
+// This is a map with an entry for all elevator ever occuring on the nettwork. 
+// The entries are the orders for the corresponding elevator and there are these orders which are synchronised using a cyclic counter when getting information from another elevator.
+// Takes in button presses from FSM and assigns the order to an elevator.
+// Takes in completed orders from FSM and marks order as completed in assignedOrders.
+// Update on local elevator state is received from FSM and update on remote elevator states from nettwork module.
+// Handles reassigning and handling of connection and disconnection of elevators given from the peers update
+// Checks if an order should be started by the local elevator and sends this to the FSM module if it is not busy.
 func OrderHandler(id string,
 	startLocalOrderCh chan elevio.ButtonEvent, buttonPressCH, completedLocalOrderCH chan elevio.ButtonEvent,
-	remoteElevatorCh chan message.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
+	remoteElevatorCh chan network.ElevatorStateMsg, peerUpdateCh chan network.PeerUpdate,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
 	selfId = id
@@ -60,25 +59,25 @@ func OrderHandler(id string,
 		ordersToPeersCH <- deepcopy.DeepCopyNettworkElevator(elevators[selfId])
 		select {
 
-		//updates state of this elevator from fsm
+		// Updates state of this elevator from fsm
 		case elev := <-fsmToOrdersCH:
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: assignedOrders}
 		
-		//assigns order for cab or hall button press, forwarded from fsm
+		// Assigns order for cab or hall button press, forwarded from fsm
 		case btnInput := <-buttonPressCH:
 			if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 				assignedOrders = assignOrder(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators), activeElevators, selfId, btnInput)
 				elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 			}
 		
-		//mark order as completed
+		// Mark order as completed
 		case completedOrder := <-completedLocalOrderCH:
 			if assignedOrders[selfId][completedOrder.Floor][int(completedOrder.Button)] == elevator.Ordr_Confirmed {
 				assignedOrders[selfId] = setOrder(assignedOrders[selfId], completedOrder.Floor, int(completedOrder.Button), elevator.Ordr_Complete)
 				elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 			}
 
-		//handles when elevators connects and disconnects from network
+		// Handles when elevators connects and disconnects from network
 		case p := <-peerUpdateCh:
 			fmt.Printf("Peer update:\n")
 			fmt.Printf("  Peers:    %q\n", p.Peers)
@@ -89,14 +88,14 @@ func OrderHandler(id string,
 			peerUpdateHandler(assignedOrders, elevators, activeElevators, selfId, p)
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 
-		//Updates order and elevator information from other elevators on network. 
+		// Updates order and elevator information from other elevators on network. 
 		case remoteElevatorState := <-remoteElevatorCh:
-			//Updates from itself are ignored, but keeps the select case from stalling
+			// Updates from itself are ignored, but keeps the select case from stalling
 			if remoteElevatorState.Id != selfId {
 				assignedOrders, elevators = updateFromRemoteElevator(assignedOrders, elevators, remoteElevatorState)
 
 				if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
-					//merges orders according to cyclic counter
+					// merges orders according to cyclic counter
 					assignedOrders = orderMerger(assignedOrders, elevators, activeElevators, remoteElevatorState.Id)
 
 					// reassign orders if remote elevator have been obstructed or gotten a motorstop
@@ -120,21 +119,21 @@ func OrderHandler(id string,
 				// // 	// fmt.Println(elev, ": motorstop ", elevators[elev].Elevator.MotorStop)
 				// }
 
-				//resets cyclic counter if its only elevator on network
+				// resets cyclic counter if its only elevator on network
 				if len(activeElevators) == 1 {
 					if (activeElevators[0] == selfId) && (assignedOrders[selfId][floor][btn] == elevator.Ordr_Complete){
 						assignedOrders[selfId] = setOrder(assignedOrders[selfId], floor, btn, elevator.Ordr_None)
 					}
 				}
 
-				//sends assigned orders to fsm
+				// sends assigned orders to fsm
 				if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 					assignedOrders = confirmAndStartLocalOrder(assignedOrders, elevators, activeElevators, floor, btn, startLocalOrderCh)
 				}
 			}
 		}
 
-		//hall lights
+		// hall lights
 		if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 			activeHallLights = setHallLights(assignedOrders, activeElevators, activeHallLights)
 		}

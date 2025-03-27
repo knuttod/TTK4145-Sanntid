@@ -31,18 +31,22 @@ func init() {
 	motorStopTimeout = cfg.MotorStopTimeout * time.Second
 }
 
-// FSM handles core logic of a single Elevator. Interacts with orders via localAssignedOrderCh, localRequestCH and completedOrderCh.
-// Also takes input from elevio on drv channels. Interacts with external timer on doorTimerStartCH and doorTimerFinishedCH
+// FSM handles core logic of a single Elevator. 
+// Interacts with orders via localAssignedOrderCh, localRequestCH and completedOrderCh.
+// Also takes input from elevio on drv channels. 
 func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan elevio.ButtonEvent, fsmToOrdersCh chan elevator.Elevator) {
 
+	// Elevio
 	drvButtonsCh := make(chan elevio.ButtonEvent)
 	drvFloorsCh := make(chan int)
 	drvObstrCh := make(chan bool)
 	drvStopCh := make(chan bool)
 
+	// Door timer
 	doorTimerStartCh := make(chan bool)
 	doorTimerFinishedCh := make(chan bool)
 
+	// Motor stop timer
 	arrivedOnFloorCh := make(chan bool)
 	departureFromFloorCh := make(chan bool)
 	motorStopCh := make(chan bool)
@@ -50,7 +54,7 @@ func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan e
 	go elevio.PollButtons(drvButtonsCh)
 	go elevio.PollFloorSensor(drvFloorsCh)
 	go elevio.PollObstructionSwitch(drvObstrCh)
-	go elevio.PollStopButton(drvStopCh) //kanskje implementere stop?
+	go elevio.PollStopButton(drvStopCh)
 
 	go doorTimer(DoorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
 	go motorStopTimer(motorStopTimeout, arrivedOnFloorCh, departureFromFloorCh, motorStopCh)

@@ -7,8 +7,7 @@ import (
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
 	"Heis/pkg/orders"
-	"Heis/pkg/network/message"
-	"Heis/pkg/network/peers"
+	"Heis/pkg/network/network"
 	"flag"
 	"fmt"
 	"os"
@@ -27,8 +26,8 @@ func main() {
 	elevio.Init("localhost:"+port, cfg.NumFloors)
 
 	// Create channels for inter-module communication
-	peerUpdateCh := make(chan peers.PeerUpdate)
-	remoteElevatorCh := make(chan message.ElevatorStateMsg)
+	peerUpdateCh := make(chan network.PeerUpdate)
+	remoteElevatorCh := make(chan network.ElevatorStateMsg)
 	peerTxEnable := make(chan bool)
 	localAssignedOrderCh := make(chan elevio.ButtonEvent)
 	buttonPressCH := make(chan elevio.ButtonEvent)
@@ -38,8 +37,8 @@ func main() {
 	transmitterToRecivierSkipCh := make(chan bool)
 
 	// Launch main elevator system components as goroutines
-	go peers.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
-	go peers.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
+	go network.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+	go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
 	go fsm.Fsm(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, fsmToOrdersCH)
 	go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh,
 		remoteElevatorCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)

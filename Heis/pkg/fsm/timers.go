@@ -4,11 +4,10 @@ import (
 	"time"
 )
 
-// Takes in timer duration on timer start and sends on timer End when timer is finished. If timer start is sent twice before done, the timer is reset
+// Timer for the door. Should run as a go-routine. Opening time of door is given as an input.
+// Timer is started by sending on doorTimerStartCh and timeout of timer is sent on doorTimerEndCh
 func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimerEndCh chan bool) {
-	//doorOpenTime is expected to be in seconds
 
-	//tror dette er riktig/lurt
 	<- doorTimerStartCh
 	timer := time.NewTimer(doorOpenTime)
 	for {
@@ -21,11 +20,13 @@ func doorTimer(doorOpenTime time.Duration, doorTimerStartCh chan bool, doorTimer
 	}
 }
 
+// Timer to detect motorstop. Should run as a go-routine. The timeout for detecting motorstop is given as an input. 
+// Timer is started by sending on departureFromFloorCh (every time the elevator departures from floor).
+// Timer is aborted if something is sent on arrivedOnFloorCh (every time an elevator reaches a floor).
+// On a timeout, aka. a motorstop happend, it is sent on motorStopCh.
 func motorStopTimer(motorStopTimeoutTime time.Duration, arrivedOnFloorCh, departureFromFloorCh, motorStopCh chan bool) {
-	
-	//tror dette er riktig/lurt
+
 	<- departureFromFloorCh
-	//denne bør kanskje være lang
 	timer := time.NewTimer(motorStopTimeoutTime)
 	for {
 		select {
@@ -34,7 +35,7 @@ func motorStopTimer(motorStopTimeoutTime time.Duration, arrivedOnFloorCh, depart
 			timer.Reset(motorStopTimeoutTime)
 
 		case <-arrivedOnFloorCh:
-			//Tries to stop timer, if not possible take return value from timer
+			//Tries to stop timer, if not possible take return value from timer.C
 			if !timer.Stop() {
 				<-timer.C
 			}

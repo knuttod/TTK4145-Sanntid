@@ -1,13 +1,8 @@
-package peers
+package network
 
 import (
 	"Heis/pkg/elevator"
-	// "Heis/pkg/nettwork/message"
 	"Heis/pkg/network/conn"
-	"Heis/pkg/network/message"
-
-
-	// "Heis/pkg/orders"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -15,8 +10,6 @@ import (
 	"time"
 )
 
-
-//denne modulen bør ryddes og få nytt navn
 
 type PeerUpdate struct {
 	Peers []string
@@ -37,64 +30,49 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 	// Make sure info is loaded before sending
 	networkElevator := <-ordersToPeersCH
 
-	fmt.Println("start sending")
-	iter := 0
-
 	enable := true
 	for {
+		// Should only send message once in an interval. 
+		// Also able to dissable and reanable sending.
 		select {
 		case enable = <-transmitEnable:
 		case <-time.After(interval):
 		}
-			// Non-blocking check for updates on ordersToPeersCH
-			select {
-			case networkElevator = <-ordersToPeersCH:
-				// Update the networkElevator data
-			default:
-				// No update available, proceed with sending
+		// Non-blocking check for updates on ordersToPeersCH
+		select {
+		case networkElevator = <-ordersToPeersCH:
+		default:
+		}
+
+		if enable {
+			// Create elevator state message
+			elevatorStateMsg := ElevatorStateMsg{
+				NetworkElevator: networkElevator,
+				Id:              id,
 			}
 
-			// fmt.Println("send")
+			// Convert to JSON
+			data, err := json.Marshal(elevatorStateMsg)
+			if err != nil {
+				fmt.Println("send error:", err)
+				continue
+			}
 
-			if enable {
-				iter++
-				// Create elevator state message
-				elevatorStateMsg := message.ElevatorStateMsg{
-					NetworkElevator: networkElevator,
-					Id:              id,
-					Iter:            iter,
-				}
+			// Send data
+			_, err = conn.WriteTo(data, addr)
 
-				// Convert to JSON
-				data, err := json.Marshal(elevatorStateMsg)
-				if err != nil {
-					fmt.Println("send error:", err)
-					continue
-				}
-
-				// Send data
-				_, err = conn.WriteTo(data, addr)
-				if err != nil {
-					// fmt.Println("Send error:", err)
-					// select {
-					// case nettworkDisconnectCh <- true:
-					// default:
-					// }
-					transmitterToRecivierSkipCh <- true
-					continue
-				}
-				if id == "heis1" {
-					// fmt.Println("send iter", iter)
-				}
-				// fmt.Println("Data sent successfully")
-			// }
+			// If not able to send, forward a message to receiver to ensure correct handling of peers
+			if err != nil {
+				transmitterToRecivierSkipCh <- true
+				continue
+			}
 		}
 	}
 }
 
 
 
-func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- message.ElevatorStateMsg) {
+func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -108,25 +86,15 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 		conn.SetReadDeadline(time.Now().Add(interval))
 		n, _, _ := conn.ReadFrom(buf[0:])
 
-		var msg message.ElevatorStateMsg
+		var msg ElevatorStateMsg
 
-		//Jalla løsning
-		// if (len(p.Peers) == 1) && (p.Peers[0] == selfId) || (len(p.Peers) == 0) {
-		// 	msg.Id = selfId
-		// 	select {
-		// 	case elevatorStateCh <- msg:
-		// 		// Successfully sent to channel
-		// 	default:
-		// 		// Channel is full, skipping send
-		// 	}
-		// } 
+		// If there was a send error, probably due to network disconnection recieve message from itself
 		select {
 		case <- transmitterToRecivierSkipCh:
 			msg.Id = selfId
 		default:
 			err := json.Unmarshal(buf[:n], &msg)
 			if err != nil {
-				// fmt.Println("rec err", err)
 				continue // Ignore invalid messages
 			}			
 		}
@@ -168,13 +136,12 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 			peerUpdateCh <- p
 		}
 
-		// Forward the full elevator state to order module
+		// Forward the full elevator state to order module. 
+		// Non blocking to prevent back up of reciever.
 		if (msg.Id != selfId) || (len(p.Peers) == 1) {
 			select {
 			case elevatorStateCh <- msg:
-				// Successfully sent to channel
 			default:
-				// Channel is full, skipping send
 			}
 		}
 	}
