@@ -1,9 +1,0 @@
-For synkronisering og alt er det bare nok at alle heisene vet tilstanden til alle de andre heisene, hvor de er, cab calls, hall calls. Siden alle heisene kjører samme algoritme vil alle komme fram til samme svar på hvem som gjør hva og man trenger ikke å ha noe valg hvor en sier ifra til de andre.
-
-Vi bør også se litt mer nøye på dokumentasjonen for eventuelle ting vi ikke trenger å ta hensyn til. Tror for eksempel at det bare kan skje en feil om gangen, altså at en heis kan ikke både krasje og havne av nettet samtidig. Dette tror jeg betyr at man ikke trenger å lagre noen cab calls eller andre ting på fil i det hele tatt, og kan heller bare huske all informasjon på de andre heisene. Så når en heis har krasjet å kobler seg til nettet igjen vil de andre heisene si hvilke cab ordre den har
-
-
-Ha cyclic counter på order states så man går fra unconfrimed til confirmed til done. Når man merger to order states f.eks unconfrimed og confirmed så blir begge til confirmed. Dersom man merger done og unconfrimed får man unconfrimed.
-
-Hvis vil bruke mutexes er dette en nice måte tror jeg
-https://go.dev/tour/concurrency/9
