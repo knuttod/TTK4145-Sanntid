@@ -8,6 +8,7 @@ import (
 	"Heis/pkg/network/peers"
 )
 
+// Creates a map with an entry with only unkown orders for the given id
 func assignedOrdersInit(id string) map[string][][]elevator.OrderState {
 	assignedOrders := map[string][][]elevator.OrderState{}
 
@@ -173,23 +174,23 @@ func assignedOrdersKeysCheck(elevators map[string]elevator.NetworkElevator, acti
 }
 
 
-//sets order in the given 2d slice to the given order, returns the edited 2d slice. 
+// Sets order in the given 2d slice to the given order, returns the edited 2d slice. 
 func setOrder(orders [][]elevator.OrderState, floor, btn int, state elevator.OrderState) [][]elevator.OrderState{
 	orders[floor][btn] = state
 	return orders
 }
 
-//Hanldes disconnection and reconnection of elevators; reassigning of orders and correct handling of cyclic counter for assignedOrders 
+// Handles disconnection and reconnection of elevators; reassigning of orders and correct handling of cyclic counter for assignedOrders 
 func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, p peers.PeerUpdate) map[string][][]elevator.OrderState{
 
-	//detects disconnected elevators and reassigns their orders
+	// Detects disconnected elevators and reassigns their orders
 	if len(p.Lost) > 0 {
 		if assignedOrdersKeysCheck(elevators, activeElevators, selfId) {
 			reassignOrdersFromDisconnectedElevators(assignedOrders, deepcopy.DeepCopyElevatorsMap(elevators),  p.Lost, activeElevators, selfId)
 		}
 	}
 
-	//if elevator(s) has only disconnected and reconnects (not crashed) it has its latest info about its order and to not override it having no order the order is set to complete
+	// If elevator(s) has only disconnected and reconnects (not crashed) it has its latest info about its order and to not override it having no order the order is set to complete
 	if len(p.New) > 0 {
 		for floor := range numFloors {
 			if (assignedOrders)[selfId][floor][int(elevio.BT_Cab)] == elevator.Ordr_None {
@@ -198,10 +199,10 @@ func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevat
 		}
 	}
 
-	//sets orders on all other elevators to unkwown, since information can not be trusted
+	// Sets orders on all other elevators to unkwown, since information can not be trusted
 	if len(p.Peers) == 1 {
 		for id := range assignedOrders {
-			//do not want to set itself to unkown
+			// Do not want to set itself to unkown
 			if id == selfId {
 				continue
 			}
@@ -215,7 +216,7 @@ func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevat
 	return assignedOrders
 }
 
-//Lights on if an elevator has an order confirmed, and off otherwise. Keeps track of changes to prevent oversending to elevio
+// Lights on if an elevator has an order confirmed, and off otherwise. Keeps track of changes to prevent oversending to elevio
 func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElevators []string, activeHallLights [][]bool) [][]bool {
 	for floor := range numFloors {
 		for btn := range (numBtns - 1) {
@@ -235,7 +236,7 @@ func setHallLights(assignedOrders map[string][][]elevator.OrderState, activeElev
 	return activeHallLights
 }
 
-//turns all hall lights off 
+// Turns all hall lights off 
 func initHallLights() [][]bool {
 	activeHallLights := make([][]bool, numFloors)
 	for floor := range numFloors {
