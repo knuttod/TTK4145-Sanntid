@@ -6,8 +6,8 @@ import (
 	"Heis/pkg/fsm"
 	"fmt"
 	"math"
+	
 )
-
 
 //reassigns orders from elevators on nettwork, with either motorstop or obstruction
 func reassignOrdersFromUnavailable(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) map[string][][]elevator.OrderState {
@@ -34,6 +34,7 @@ func reassignOrdersFromUnavailable(assignedOrders map[string][][]elevator.OrderS
 	return assignedOrders
 }
 
+//reassigns orders from elevators disconnecting from network
 func reassignOrdersFromDisconnectedElevators(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, lostElevators, activeElevators []string, selfId string) map[string][][]elevator.OrderState {
 
 	for _, elevId := range lostElevators {
@@ -94,11 +95,11 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 		}
 
 		elevCost = cost(elevators[elev].Elevator)
-		//Adding distance to cost to differentate between elevators with same cost
-		distance := math.Abs(float64(elevators[elev].Elevator.Floor) - float64(order.Floor))
-		elevCost += int(distance) * 3
 
-		fmt.Println(elev, ":", elevCost)
+		//Adding distance to cost to differentate between elevators with same cost
+		distance := math.Abs(float64(elevators[elev].Elevator.Floor - order.Floor))
+		elevCost += int(distance) *3
+
 
 		//choose elevator with lower cost
 		if elevCost < minCost {
@@ -116,59 +117,59 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 	return assignedOrders
 }
 
-
-//syntes cost blir gitt litt rart. Hvis to heiser er idle og orders blir reassigned så kan det skje at bare den ene heisen tar alle i stedet for at de blir fordelte mellom heisene
-
 //ensure that the elevator struct given as input is a deepcopy as this function changes the values
+
+//Calculates the cost of an elevator for the given order
 func cost(elev elevator.Elevator) int {
 
 		duration := 0
 
 		switch elev.Behaviour {
+		//If elevator is idle, and there is no given direction, there is no extra cost
 		case elevator.EB_Idle:
 			directionAndBehaviour := fsm.ChooseDirection(elev)
 			elev.Dirn = directionAndBehaviour.Dirn
 			elev.Behaviour = directionAndBehaviour.Behaviour
 			if elev.Dirn == elevio.MD_Stop {
-				return duration //Dersom EB_IDLE, og hvis det er ingen retning, blir det ingen ekstra kostnad
-
+				return duration 
+				
 			}
 		case elevator.EB_Moving:
-			duration += travelTime / 2 //dersom heisen er i beveglse legger vi til en kostand
+			//If elevator is moving, we add the time it takes to reach the floor
+			duration += travelTime / 2 
 			elev.Floor += int(elev.Dirn)
 		case elevator.EB_DoorOpen:
-			//Trekker fra kostnad siden heisen allerede står i ro med dørene åpne og er dermed:
-			//Klar til å ta imot nye bestillinger på denne etasjoen, uten ekstra (halvparten) ventetid for å åpne dører
-			duration -= int(fsm.DoorTimerInterval)
-
+			//Subtracting the time it takes to open the door, since the elevator is already idle with the door open
+			duration -= int(fsm.DoorTimerInterval.Seconds())
 		}
-		for duration < 999 {
+		for duration < 999{
+
 			// An elevator should not be moving 
 			if elev.Floor < 0 || elev.Floor > (numFloors - 1) {
 				break
 			}
+
+			//Returning the duration when the elevator should stop
 			if fsm.ShouldStop(elev) {
 				elev = costClearAtCurrentFloor(elev)
-				duration += int(fsm.DoorTimerInterval)
-				// might not need this?
+				duration += int(fsm.DoorTimerInterval.Seconds())
+				
 				directionAndBehaviour := fsm.ChooseDirection(elev)
 				elev.Dirn = directionAndBehaviour.Dirn
 				elev.Behaviour = directionAndBehaviour.Behaviour
-				// ...
 				if elev.Dirn == elevio.MD_Stop {
-					return duration //returner duration når den simulerte heisen har kommet til en stopp
+					return duration 
 				}
 			}
-			elev.Floor += int(elev.Dirn) //Hvis det ikke er kommet noe tegn på at den stopper sier vi at den estimerte heisen sier vi her at den går til en ny etasje
-			duration += travelTime       //da vil vi også legge til en TRAVEL_TIME kostand for denne opeerasjonen
+			//Adding the time it takes to reach the next floor, considering its direction and travel time
+			elev.Floor += int(elev.Dirn)
+			duration += travelTime       
 		}
-		//		return 999
-
-	// }
-	return 999 //returnerer høy kostnad dersom heisen er EB_unavailable
+	//Return high cost if elevator is unavailable
+	return 999 
 }
 
-// version without sending on completed channel to orders
+// Same version as in fsm, but without sending on completed channel to orders
 func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
@@ -179,12 +180,12 @@ func costClearAtCurrentFloor(elev elevator.Elevator) elevator.Elevator {
 		elev.LocalOrders[elev.Floor][elevio.BT_Cab] = false
 		switch elev.Dirn {
 		case elevio.MD_Up:
-			if (!fsm.LocalOrderAbove(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallUp] == false) {
+			if (!fsm.LocalOrderAbove(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallUp]) {
 				elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
 			}
 			elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 		case elevio.MD_Down:
-			if (!fsm.LocalOrderBelow(elev)) && (elev.LocalOrders[elev.Floor][elevio.BT_HallDown] == false) {
+			if (!fsm.LocalOrderBelow(elev)) && !(elev.LocalOrders[elev.Floor][elevio.BT_HallDown]) {
 				elev.LocalOrders[elev.Floor][elevio.BT_HallUp] = false
 			}
 			elev.LocalOrders[elev.Floor][elevio.BT_HallDown] = false
