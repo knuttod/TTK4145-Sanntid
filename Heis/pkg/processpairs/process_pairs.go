@@ -22,22 +22,27 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 
 	elevio.Init("localhost:"+port, cfg.NumFloors)
 
-	// Create channels for inter-module communication
-	peerUpdateCh := make(chan network.PeerUpdate)
-	remoteElevatorCh := make(chan network.ElevatorStateMsg)
-	peerTxEnable := make(chan bool)
-	localAssignedOrderCh := make(chan elevio.ButtonEvent)
+	// between fsm and orders
 	buttonPressCH := make(chan elevio.ButtonEvent)
 	completedOrderCh := make(chan elevio.ButtonEvent)
 	fsmToOrdersCH := make(chan elevator.Elevator)
+	localAssignedOrderCh := make(chan elevio.ButtonEvent)
+
+	// between orders and network
 	ordersToPeersCH := make(chan elevator.NetworkElevator)
+	peerUpdateCh := make(chan network.PeerUpdate)
+	remoteElevatorUpdateCh := make(chan network.ElevatorStateMsg)
+
+	// enable sending on nettwork
+	peerTxEnable := make(chan bool)
+	// between transmitter and reciever
 	transmitterToRecivierSkipCh := make(chan bool)
 
 	// Launch main elevator system components as goroutines
-	go network.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
-	go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
 	go fsm.Fsm(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, fsmToOrdersCH)
-	go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)
+	go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, remoteElevatorUpdateCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)
+	go network.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+	go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorUpdateCh)
 
 	// Periodic state sync to backup
 	go func() {

@@ -30,17 +30,18 @@ func init() {
 }
 
 // "Main" function for orders.
-// Handles synchronization of orders between elevators by using a cyclic counter in assignedOrders.
-// This is a map with an entry for all elevator ever occuring on the nettwork.
+// Handles synchronization of orders between elevators by using a cyclic counter.
+// Each elevator has a map, assignedOrders, which keeps track of all the orders for all the elevators on the network.
+// These maps are compared between the elevators and are updated and acts as a cyclic counter.
 // The entries are the orders for the corresponding elevator and there are these orders which are synchronised using a cyclic counter when getting information from another elevator.
 // Takes in button presses from FSM and assigns the order to an elevator.
 // Takes in completed orders from FSM and marks order as completed in assignedOrders.
 // Update on local elevator state is received from FSM and update on remote elevator states from nettwork module.
-// Handles reassigning and handling of connection and disconnection of elevators given from the peers update
+// Handles reassigning and handling of connection and disconnection of elevators given from the peers update.
 // Checks if an order should be started by the local elevator and sends this to the FSM module if it is not busy.
 func OrderHandler(id string,
 	startLocalOrderCh chan elevio.ButtonEvent, buttonPressCH, completedLocalOrderCH chan elevio.ButtonEvent,
-	remoteElevatorCh chan network.ElevatorStateMsg, peerUpdateCh chan network.PeerUpdate,
+	remoteElevatorUpdateCh chan network.ElevatorStateMsg, peerUpdateCh chan network.PeerUpdate,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
 	selfId = id
@@ -88,7 +89,7 @@ func OrderHandler(id string,
 			elevators[selfId] = elevator.NetworkElevator{Elevator: elevators[selfId].Elevator, AssignedOrders: assignedOrders}
 
 		// Updates order and elevator information from other elevators on network.
-		case remoteElevatorState := <-remoteElevatorCh:
+		case remoteElevatorState := <-remoteElevatorUpdateCh:
 			// Updates from itself are ignored, but keeps the select case from stalling
 			if remoteElevatorState.Id != selfId {
 				assignedOrders, elevators = updateFromRemoteElevator(assignedOrders, elevators, remoteElevatorState)

@@ -17,20 +17,24 @@ import (
 )
 
 func main() {
+
+	// Load arguments from command flags
 	id, port, processPairsFlag := parseFlags()
 	id = generateIDIfEmpty(id)
-	backupPort := calculateBackupPort(port)
-
+	
+	// Load parameters from config file
 	cfg, err := config.LoadConfig("config/elevator_params.json")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-
+	
 	// Check if user have selected the processPair option.
 	// The processPair option will only work on linux systems.
 	if processPairsFlag {
+		backupPort := calculateBackupPort(port)
 		// Determine process role using processpairs
 		connection, err := processpairs.SetupUDPListener(backupPort)
+		// If it can not connect to a primary it should take over as primary
 		if err != nil {
 			fmt.Println("Starting as primary...")
 			go processpairs.StartPrimaryProcess(id, port, backupPort)
@@ -41,30 +45,37 @@ func main() {
 			go processpairs.MonitorAndTakeOver(id, port, connection, backupPort)
 		}
 
-		// Otherwise the system will run without processpairs.
+	// Otherwise the system will run without processpairs.
 	} else {
 		elevio.Init("localhost:"+port, cfg.NumFloors)
 
-		peerUpdateCh := make(chan network.PeerUpdate)
-		remoteElevatorCh := make(chan network.ElevatorStateMsg)
-		peerTxEnable := make(chan bool)
-		localAssignedOrderCh := make(chan elevio.ButtonEvent)
+		// between fsm and orders
 		buttonPressCH := make(chan elevio.ButtonEvent)
 		completedOrderCh := make(chan elevio.ButtonEvent)
 		fsmToOrdersCH := make(chan elevator.Elevator)
+		localAssignedOrderCh := make(chan elevio.ButtonEvent)
+
+		// between orders and network
 		ordersToPeersCH := make(chan elevator.NetworkElevator)
+		peerUpdateCh := make(chan network.PeerUpdate)
+		remoteElevatorUpdateCh := make(chan network.ElevatorStateMsg)
+
+		// enable sending on nettwork
+		peerTxEnable := make(chan bool)
+		// between transmitter and reciever
 		transmitterToRecivierSkipCh := make(chan bool)
 
 		// Launch main elevator system components as goroutines
-		go network.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
-		go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorCh)
 		go fsm.Fsm(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, fsmToOrdersCH)
-		go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, remoteElevatorCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)
+		go orders.OrderHandler(id, localAssignedOrderCh, buttonPressCH, completedOrderCh, remoteElevatorUpdateCh, peerUpdateCh, fsmToOrdersCH, ordersToPeersCH)
+		go network.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
+		go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorUpdateCh)
 
 	}
 
 	select {}
 }
+
 
 // parseFlags handles command-line flag parsing
 func parseFlags() (string, string, bool) {

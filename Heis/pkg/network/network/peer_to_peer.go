@@ -34,8 +34,8 @@ func init() {
 	timeout = cfg.NetworkTimeout * time.Millisecond
 }
 
-// Transmits the elevator state and the id to all the other elevators on the elevatorState chanel.
-// Keeps track of the conected elevators, and sends the elevatorstates on the elevatorStateCh to the order module, the ids are sent to main on the peerUpdate channel.
+// Sends the information this elevator has for all the other elevators, to all the other elevators.
+// If sending fails, probably due to network disconnection, transmitter sends on channel to reciver.
 func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToRecivierSkipCh chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
@@ -83,7 +83,11 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 	}
 }
 
-func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, elevatorStateCh chan<- ElevatorStateMsg) {
+
+// Handles incoming messages and keeps track of the connected elevators.
+// Messages are sent on the elevatorStateCh when the reciving function is ready.
+// A change in connected elevators results in a peerUpdate sent on the peerUpdateCh.
+func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, remoteElevatorUpdateCh chan<- ElevatorStateMsg) {
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)
@@ -98,18 +102,20 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 
 		var msg ElevatorStateMsg
 
-		// If there was a send error, probably due to network disconnection recieve message from itself
+		// If there was a send error, probably due to network disconnection recieve message from itself from transmitter
 		select {
 		case <-transmitterToRecivierSkipCh:
 			msg.Id = selfId
 		default:
 			err := json.Unmarshal(buf[:n], &msg)
 			if err != nil {
-				continue // Ignore invalid messages
+				// Ignore invalid messages
+				continue 
 			}
 		}
-
-		id := msg.Id // Extract peer ID
+		
+		// Extract peer ID
+		id := msg.Id 
 
 		// Track peer presence
 		p.New = ""
@@ -149,7 +155,7 @@ func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, pe
 		// Non blocking to prevent back up of reciever.
 		if (msg.Id != selfId) || (len(p.Peers) == 1) {
 			select {
-			case elevatorStateCh <- msg:
+			case remoteElevatorUpdateCh <- msg:
 			default:
 			}
 		}

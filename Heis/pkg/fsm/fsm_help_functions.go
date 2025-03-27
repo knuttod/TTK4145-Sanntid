@@ -38,7 +38,7 @@ func fsmInit(drvFloorsCh chan int) elevator.Elevator {
 	return elev
 }
 
-
+// checks if there are any local orders on the floors above the elevator
 func LocalOrderAbove(elev elevator.Elevator) bool {
 	for floor := elev.Floor + 1; floor < numFloors; floor++ {
 		for btn := range numBtns {
@@ -51,6 +51,7 @@ func LocalOrderAbove(elev elevator.Elevator) bool {
 	return false
 }
 
+// checks if there are any local orders on the floors below the elevator
 func LocalOrderBelow(elev elevator.Elevator) bool {
 	for floor := 0; floor < elev.Floor; floor++ {
 		for btn := range numBtns {
@@ -62,6 +63,7 @@ func LocalOrderBelow(elev elevator.Elevator) bool {
 	return false
 }
 
+// checks if there are any local orders on the floor of the elevator
 func localOrderHere(elev elevator.Elevator) bool {
 	for btn := range numBtns{
 		if elev.LocalOrders[elev.Floor][btn] {
@@ -71,6 +73,7 @@ func localOrderHere(elev elevator.Elevator) bool {
 	return false
 }
 
+// Chooses a direction for the elevator to move in according to the direction, behaviour and localOrders of the elevator
 func ChooseDirection(elev elevator.Elevator) elevator.DirnBehaviourPair {
 	switch elev.Dirn {
 	case elevio.MD_Up:
@@ -110,6 +113,7 @@ func ChooseDirection(elev elevator.Elevator) elevator.DirnBehaviourPair {
 
 }
 
+// Checks if the elevator should stop on a floor or keep going
 func ShouldStop(elev elevator.Elevator) bool {
 	switch elev.Dirn {
 	case elevio.MD_Down:
@@ -134,6 +138,7 @@ func ShouldStop(elev elevator.Elevator) bool {
 	}
 }
 
+// Checks if a new order should be cleared immedeatly, e.g. a cab order in the same floor the elevator is on
 func ShouldClearImmediately(elev elevator.Elevator, btn_floor int, btn_type elevio.ButtonType) bool {
 	switch elev.Config.ClearRequestVariant {
 	case elevator.CV_ALL:
@@ -187,11 +192,13 @@ func ClearAtCurrentFloor(elev elevator.Elevator, completedOrderCH chan elevio.Bu
 	return elev
 }
 
+// Sets the corresponding order in the localOrder 2D slice to true
 func setLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType) elevator.Elevator {
 	elev.LocalOrders[floor][btn] = true
 	return elev
 }
 
+// Sets the corresponding order in the localOrder 2D slice to false and sends message of completed order to Orders
 func clearLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType, completedOrderCH chan elevio.ButtonEvent) elevator.Elevator {
 	elev.LocalOrders[floor][btn] = false
 	//send on channel to orders that an order is completed/cleared
@@ -202,6 +209,7 @@ func clearLocalOrder(elev elevator.Elevator, floor int, btn elevio.ButtonType, c
 	return elev
 }
 
+// Clears all hall orders in localOrders
 func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
 	for floor := range numFloors {
 		for btn := range numBtns - 1 {
@@ -211,6 +219,7 @@ func removeLocalHallOrders(elev elevator.Elevator) elevator.Elevator {
 	return elev
 }
 
+// Sets cab lights
 func setCabLights(elev elevator.Elevator) {
 	for floor := range numFloors{
 		btn := int(elevio.BT_Cab)
