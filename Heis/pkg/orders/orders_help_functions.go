@@ -23,7 +23,7 @@ func assignedOrdersInit(id string) map[string][][]elevator.OrderState {
 	return assignedOrders
 }
 
-// Updates state in assignedOrders for local elevator if it is behind remoteElevators
+// Updates state in assignedOrders for local elevator if it is behind the other elevators, according to cyclic counter.
 func orderMerger(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, remoteId string) map[string][][]elevator.OrderState {
 	var currentState elevator.OrderState
 	var updateState elevator.OrderState
@@ -140,7 +140,7 @@ func updateFromRemoteElevator(assignedOrders map[string][][]elevator.OrderState,
 
 // Needs this check to prevent index error. Checks if all active elevators in Elevators have an assignedOrders map with keys for all active elevators on nettwork. 
 func assignedOrdersKeysCheck(elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string) bool {
-
+	
 	if len(activeElevators) == 0 {
 		return false
 	}

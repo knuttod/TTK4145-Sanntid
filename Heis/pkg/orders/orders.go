@@ -10,7 +10,6 @@ import (
 	"log"
 )
 
-// defined in config
 var (
 	numFloors  int
 	numBtns    int
@@ -44,6 +43,7 @@ func OrderHandler(id string,
 	remoteElevatorUpdateCh chan network.ElevatorStateMsg, peerUpdateCh chan network.PeerUpdate,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
+	//sets global variable for module
 	selfId = id
 
 	assignedOrders := assignedOrdersInit(selfId)

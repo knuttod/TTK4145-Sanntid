@@ -4,7 +4,6 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
-	"fmt"
 	"math"
 	
 )
@@ -47,7 +46,6 @@ func reassignOrdersFromDisconnectedElevators(assignedOrders map[string][][]eleva
 						Floor:  floor,
 						Button: elevio.ButtonType(btn),
 					}
-					fmt.Println("reassign from disconnect")
 					assignedOrders = assignOrder(assignedOrders, elevators, activeElevators, selfId, order)
 				}
 				//sets all hall orders to unkown to ensure correct merging of orders when elevator reconnects
@@ -122,7 +120,7 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 // Ensure that the elevator struct given as input is a deepcopy as this function changes the values
 func cost(elev elevator.Elevator, orders [][]elevator.OrderState) int {
 
-	//update local orders to also include upcoming orders
+	// update local orders to also include upcoming orders
 	for floor := range numFloors {
 		for btn := range numBtns {
 			if (orders[floor][btn] == elevator.Ordr_Unconfirmed) || (orders[floor][btn] == elevator.Ordr_Confirmed) {
@@ -135,7 +133,7 @@ func cost(elev elevator.Elevator, orders [][]elevator.OrderState) int {
 
 	switch elev.Behaviour {
 
-	//If elevator is idle, and there is no given direction, there is no extra cost
+	// If elevator is idle, and there is no given direction, there is no extra cost
 	case elevator.EB_Idle:
 		directionAndBehaviour := fsm.ChooseDirection(elev)
 		elev.Dirn = directionAndBehaviour.Dirn
@@ -145,12 +143,12 @@ func cost(elev elevator.Elevator, orders [][]elevator.OrderState) int {
 			
 		}
 
-	//If elevator is moving, we add the time it takes to reach the floor
+	// If elevator is moving, we add the time it takes to reach the floor
 	case elevator.EB_Moving:
 		duration += travelTime / 2 
 		elev.Floor += int(elev.Dirn)
 
-	//Subtracting the time it takes to open the door, since the elevator is already idle with the door open
+	// Subtracting the time it takes to open the door, since the elevator is already idle with the door open
 	case elevator.EB_DoorOpen:
 		duration -= int(fsm.DoorTimerInterval.Seconds())
 	}

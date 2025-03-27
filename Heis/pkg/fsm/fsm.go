@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// defined in config
 var (
 	numFloors         int
 	numBtns           int
