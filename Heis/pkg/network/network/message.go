@@ -1,12 +1,10 @@
-package message
+package network
 
 import (
 	"Heis/pkg/elevator"
 )
 
 type ElevatorStateMsg struct {
-	// Message        string
-	Iter            int
 	NetworkElevator elevator.NetworkElevator
 	Id              string
 }

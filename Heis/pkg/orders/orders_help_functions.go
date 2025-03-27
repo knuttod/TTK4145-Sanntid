@@ -4,8 +4,7 @@ import (
 	"Heis/pkg/deepcopy"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/network/message"
-	"Heis/pkg/network/peers"
+	"Heis/pkg/network/network"
 )
 
 // Creates a map with an entry with only unkown orders for the given id
@@ -127,7 +126,7 @@ func confirmAndStartLocalOrder(assignedOrders map[string][][]elevator.OrderState
 }
 
 // Updates remoteElevator map and adds entries for remote Elevator in assignedOrders map for local elevator if they do not exist yet.
-func updateFromRemoteElevator(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, remoteElevatorState message.ElevatorStateMsg) (map[string][][]elevator.OrderState, map[string]elevator.NetworkElevator) {
+func updateFromRemoteElevator(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, remoteElevatorState network.ElevatorStateMsg) (map[string][][]elevator.OrderState, map[string]elevator.NetworkElevator) {
 	remoteElevator := remoteElevatorState.NetworkElevator
 	elevators[remoteElevatorState.Id] = remoteElevator
 
@@ -181,7 +180,7 @@ func setOrder(orders [][]elevator.OrderState, floor, btn int, state elevator.Ord
 }
 
 // Handles disconnection and reconnection of elevators; reassigning of orders and correct handling of cyclic counter for assignedOrders 
-func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, p peers.PeerUpdate) map[string][][]elevator.OrderState{
+func peerUpdateHandler(assignedOrders map[string][][]elevator.OrderState, elevators map[string]elevator.NetworkElevator, activeElevators []string, selfId string, p network.PeerUpdate) map[string][][]elevator.OrderState{
 
 	// Detects disconnected elevators and reassigns their orders
 	if len(p.Lost) > 0 {

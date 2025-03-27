@@ -4,8 +4,7 @@ import (
 	"Heis/pkg/config"
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
-	"Heis/pkg/network/message"
-	"Heis/pkg/network/peers"
+	"Heis/pkg/network/network"
 	"Heis/pkg/deepcopy"
 	"log"
 	"fmt"
@@ -41,7 +40,7 @@ func init() {
 // Checks if an order should be started by the local elevator and sends this to the FSM module if it is not busy.
 func OrderHandler(id string,
 	startLocalOrderCh chan elevio.ButtonEvent, buttonPressCH, completedLocalOrderCH chan elevio.ButtonEvent,
-	remoteElevatorCh chan message.ElevatorStateMsg, peerUpdateCh chan peers.PeerUpdate,
+	remoteElevatorCh chan network.ElevatorStateMsg, peerUpdateCh chan network.PeerUpdate,
 	fsmToOrdersCH chan elevator.Elevator, ordersToPeersCH chan elevator.NetworkElevator) {
 
 	selfId = id
