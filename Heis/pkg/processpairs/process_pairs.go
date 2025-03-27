@@ -1,4 +1,4 @@
-package processPairs
+package processpairs
 
 import (
 	"Heis/pkg/config"

@@ -8,7 +8,7 @@ import (
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/network"
 	"Heis/pkg/orders"
-	"Heis/pkg/processPairs"
+	"Heis/pkg/processpairs"
 	"flag"
 	"fmt"
 	"log"
@@ -29,19 +29,19 @@ func main() {
 	// Check if user have selected the processPair option.
 	// The processPair option will only work on linux systems.
 	if processPairsFlag {
-		// Determine process role using processPairs
-		connection, err := processPairs.SetupUDPListener(backupPort)
+		// Determine process role using processpairs
+		connection, err := processpairs.SetupUDPListener(backupPort)
 		if err != nil {
 			fmt.Println("Starting as primary...")
-			go processPairs.StartPrimaryProcess(id, port, backupPort)
-			go processPairs.SpawnBackupProcess(id, port)
+			go processpairs.StartPrimaryProcess(id, port, backupPort)
+			go processpairs.SpawnBackupProcess(id, port)
 		} else {
 			fmt.Println("Starting as backup...")
-			go processPairs.BackupSetup(id, port, connection, backupPort)
-			go processPairs.MonitorAndTakeOver(id, port, connection, backupPort)
+			go processpairs.BackupSetup(id, port, connection, backupPort)
+			go processpairs.MonitorAndTakeOver(id, port, connection, backupPort)
 		}
 
-		// Otherwise the system will run without processPairs.
+		// Otherwise the system will run without processpairs.
 	} else {
 		elevio.Init("localhost:"+port, cfg.NumFloors)
 
