@@ -94,7 +94,7 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 			return assignedOrders
 		}
 
-		elevCost = cost(elevators[elev].Elevator)
+		elevCost = cost(elevators[elev].Elevator, assignedOrders[elev])
 
 		//Adding distance to cost to differentate between elevators with same cost
 		distance := math.Abs(float64(elevators[elev].Elevator.Floor - order.Floor))
@@ -117,54 +117,67 @@ func assignOrder(assignedOrders map[string][][]elevator.OrderState, elevators ma
 	return assignedOrders
 }
 
-//ensure that the elevator struct given as input is a deepcopy as this function changes the values
 
-//Calculates the cost of an elevator for the given order
-func cost(elev elevator.Elevator) int {
+// Calculates the cost of an elevator for the given order.
+// Ensure that the elevator struct given as input is a deepcopy as this function changes the values
+func cost(elev elevator.Elevator, orders [][]elevator.OrderState) int {
 
-		duration := 0
+	//update local orders to also include upcoming orders
+	for floor := range numFloors {
+		for btn := range numBtns {
+			if (orders[floor][btn] == elevator.Ordr_Unconfirmed) || (orders[floor][btn] == elevator.Ordr_Confirmed) {
+				elev.LocalOrders[floor][btn] = true
+			}
+		}
+	}
 
-		switch elev.Behaviour {
-		//If elevator is idle, and there is no given direction, there is no extra cost
-		case elevator.EB_Idle:
+	duration := 0
+
+	switch elev.Behaviour {
+
+	//If elevator is idle, and there is no given direction, there is no extra cost
+	case elevator.EB_Idle:
+		directionAndBehaviour := fsm.ChooseDirection(elev)
+		elev.Dirn = directionAndBehaviour.Dirn
+		elev.Behaviour = directionAndBehaviour.Behaviour
+		if elev.Dirn == elevio.MD_Stop {
+			return duration 
+			
+		}
+
+	//If elevator is moving, we add the time it takes to reach the floor
+	case elevator.EB_Moving:
+		duration += travelTime / 2 
+		elev.Floor += int(elev.Dirn)
+
+	//Subtracting the time it takes to open the door, since the elevator is already idle with the door open
+	case elevator.EB_DoorOpen:
+		duration -= int(fsm.DoorTimerInterval.Seconds())
+	}
+	
+	for duration < 999{
+
+		// An elevator should not be moving outside of the floors
+		if elev.Floor < 0 || elev.Floor > (numFloors - 1) {
+			break
+		}
+
+		//Returning the duration when the elevator should stop
+		if fsm.ShouldStop(elev) {
+			elev = costClearAtCurrentFloor(elev)
+			duration += int(fsm.DoorTimerInterval.Seconds())
+			
 			directionAndBehaviour := fsm.ChooseDirection(elev)
 			elev.Dirn = directionAndBehaviour.Dirn
 			elev.Behaviour = directionAndBehaviour.Behaviour
 			if elev.Dirn == elevio.MD_Stop {
 				return duration 
-				
 			}
-		case elevator.EB_Moving:
-			//If elevator is moving, we add the time it takes to reach the floor
-			duration += travelTime / 2 
-			elev.Floor += int(elev.Dirn)
-		case elevator.EB_DoorOpen:
-			//Subtracting the time it takes to open the door, since the elevator is already idle with the door open
-			duration -= int(fsm.DoorTimerInterval.Seconds())
 		}
-		for duration < 999{
-
-			// An elevator should not be moving 
-			if elev.Floor < 0 || elev.Floor > (numFloors - 1) {
-				break
-			}
-
-			//Returning the duration when the elevator should stop
-			if fsm.ShouldStop(elev) {
-				elev = costClearAtCurrentFloor(elev)
-				duration += int(fsm.DoorTimerInterval.Seconds())
-				
-				directionAndBehaviour := fsm.ChooseDirection(elev)
-				elev.Dirn = directionAndBehaviour.Dirn
-				elev.Behaviour = directionAndBehaviour.Behaviour
-				if elev.Dirn == elevio.MD_Stop {
-					return duration 
-				}
-			}
-			//Adding the time it takes to reach the next floor, considering its direction and travel time
-			elev.Floor += int(elev.Dirn)
-			duration += travelTime       
-		}
+		//Adding the time it takes to reach the next floor, considering its direction and travel time
+		elev.Floor += int(elev.Dirn)
+		duration += travelTime       
+	}
 	//Return high cost if elevator is unavailable
 	return 999 
 }

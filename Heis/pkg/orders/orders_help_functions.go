@@ -12,10 +12,10 @@ func assignedOrdersInit(id string) map[string][][]elevator.OrderState {
 	assignedOrders := map[string][][]elevator.OrderState{}
 
 	Orders := make([][]elevator.OrderState, numFloors)
-	for i := range numFloors {
-		Orders[i] = make([]elevator.OrderState, numBtns)
-		for j := range numBtns {
-			Orders[i][j] = elevator.Ordr_Unknown
+	for floor := range numFloors {
+		Orders[floor] = make([]elevator.OrderState, numBtns)
+		for btn := range numBtns {
+			Orders[floor][btn] = elevator.Ordr_Unknown
 		}
 	}
 	assignedOrders[id] = Orders

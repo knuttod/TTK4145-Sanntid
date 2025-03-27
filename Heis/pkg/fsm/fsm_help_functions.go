@@ -5,11 +5,11 @@ import (
 	"Heis/pkg/elevio"
 )
 
-
-func fsmInit(id string, drvFloorsCh chan int) elevator.Elevator {
+//Creates an elevator struct and ensures the elevator starts in a floor. Lights are cleared.
+func fsmInit(drvFloorsCh chan int) elevator.Elevator {
 	
 	//initialize elevator struct
-	elev := elevator.Elevator_init(numFloors, numBtns, id)
+	elev := elevator.Elevator_init(numFloors, numBtns)
 
 	//clear all lights
 	for floor := range numFloors {
