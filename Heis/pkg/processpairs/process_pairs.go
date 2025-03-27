@@ -45,15 +45,18 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 	go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorUpdateCh)
 
 	// Periodic heartbeat to backup
-	go func() {
-		for {
-			time.Sleep(500 * time.Millisecond)
-			_, err := conn.Write([]byte("ping")) 
-			if err != nil {
-				log.Printf("Failed to send to backup: %v", err)
-			}
+	go heartBeat(conn)
+}
+
+
+func heartBeat(conn *net.UDPConn) {
+	for {
+		time.Sleep(500 * time.Millisecond)
+		_, err := conn.Write([]byte("ping")) 
+		if err != nil {
+			log.Printf("Failed to send to backup: %v", err)
 		}
-	}()
+	}
 }
 
 // BackupSetup configures and runs the elevator system as the backup process
