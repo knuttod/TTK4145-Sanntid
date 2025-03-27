@@ -5,9 +5,9 @@ import (
 	"Heis/pkg/elevator"
 	"Heis/pkg/elevio"
 	"Heis/pkg/fsm"
+	"Heis/pkg/orders"
 	"Heis/pkg/network/localip"
 	"Heis/pkg/network/network"
-	"Heis/pkg/orders"
 	"Heis/pkg/processpairs"
 	"flag"
 	"fmt"
@@ -60,7 +60,7 @@ func main() {
 		peerUpdateCh := make(chan network.PeerUpdate)
 		remoteElevatorUpdateCh := make(chan network.ElevatorStateMsg)
 
-		// enable sending on nettwork
+		// enable sending on network
 		peerTxEnable := make(chan bool)
 		// between transmitter and reciever
 		transmitterToRecivierSkipCh := make(chan bool)
@@ -111,7 +111,8 @@ func calculateBackupPort(port string) string {
 func atoi(s string) int {
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		return 0 // Default to 0 if conversion fails
+		// Default to 0 if conversion fails
+		return 0 
 	}
 	return i
 }

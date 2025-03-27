@@ -36,7 +36,9 @@ func init() {
 
 // Sends the information this elevator has for all the other elevators, to all the other elevators.
 // If sending fails, probably due to network disconnection, transmitter sends on channel to reciver.
-func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToRecivierSkipCh chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
+func Transmitter(port int, id string, 
+	transmitEnable <-chan bool, transmitterToRecivierSkipCh chan bool, ordersToPeersCH chan elevator.NetworkElevator) {
+	
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
@@ -87,7 +89,9 @@ func Transmitter(port int, id string, transmitEnable <-chan bool, transmitterToR
 // Handles incoming messages and keeps track of the connected elevators.
 // Messages are sent on the elevatorStateCh when the reciving function is ready.
 // A change in connected elevators results in a peerUpdate sent on the peerUpdateCh.
-func Receiver(port int, selfId string, transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, remoteElevatorUpdateCh chan<- ElevatorStateMsg) {
+func Receiver(port int, selfId string, 
+	transmitterToRecivierSkipCh chan bool, peerUpdateCh chan<- PeerUpdate, remoteElevatorUpdateCh chan<- ElevatorStateMsg) {
+	
 	var buf [1024]byte
 	var p PeerUpdate
 	lastSeen := make(map[string]time.Time)

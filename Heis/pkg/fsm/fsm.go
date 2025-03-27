@@ -24,7 +24,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	numFloors = cfg.NumFloors // Preserving your exact naming
+	numFloors = cfg.NumFloors
 	numBtns = cfg.NumBtns
 	DoorTimerInterval = cfg.DoorOpenDuration * time.Second
 	motorStopTimeout = cfg.MotorStopTimeout * time.Second
@@ -33,7 +33,8 @@ func init() {
 // FSM handles core logic of a single Elevator.
 // Interacts with orders via localAssignedOrderCh, localRequestCH and completedOrderCh.
 // Also takes input from elevio on drv channels.
-func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan elevio.ButtonEvent, fsmToOrdersCh chan elevator.Elevator) {
+func Fsm(id string, 
+	localAssignedOrderCh, buttonPressCh, completedOrderCh chan elevio.ButtonEvent, fsmToOrdersCh chan elevator.Elevator) {
 
 	// Elevio
 	drvButtonsCh := make(chan elevio.ButtonEvent)
@@ -50,6 +51,7 @@ func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan e
 	departureFromFloorCh := make(chan bool)
 	motorStopCh := make(chan bool)
 
+	// Functions to get information from elevator io
 	go elevio.PollButtons(drvButtonsCh)
 	go elevio.PollFloorSensor(drvFloorsCh)
 	go elevio.PollObstructionSwitch(drvObstrCh)
@@ -64,14 +66,16 @@ func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan e
 		//sends a deepcopy to ensure correct message passing
 		fsmToOrdersCh <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
-		//Inputs (buttons pressed) on each elevator is channeled to their respective local request
+
+		// Inputs (buttons pressed) on each elevator is channeled to their respective local request
 		case button_input := <-drvButtonsCh:
 			buttonPressCh <- button_input
 
-		//When an assigned order on a local elevator is channeled, it is set as an order to requestButtonPress that makes the elevators move
+		// The elevator should act on an order given by the orders module 
 		case Order := <-localAssignedOrderCh:
 			elev = requestButtonPress(elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCh)
-
+		
+		
 		case newFloor := <-drvFloorsCh:
 			elev = floorArrival(elev, newFloor, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCh)
 
@@ -94,23 +98,22 @@ func Fsm(id string, localAssignedOrderCh, buttonPressCh, completedOrderCh chan e
 
 		case <-doorTimerFinishedCh:
 			if !elev.Obstructed && (elev.Behaviour != elevator.EB_Moving) {
-				elev = doorTimeout(elev, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh, completedOrderCh)
+				elev = doorTimeout(elev, doorTimerStartCh, departureFromFloorCh, completedOrderCh)
 			}
 		}
 	}
 }
 
-// Handles button presses on a local level, by processing requests based on the
-// elevator's current behavior. If the elevator is idle, it determines the next action
-// (moving or opening doors). If the elevator is moving or has doors open, it updates
-// the request state accordingly. The function also manages the door timer, sends updated
-// elevator states over UDP, and updates the button lights.
+// Handles button presses on a local level, by processing orders based on the elevator's current behavior. 
+// If the elevator is idle, it determines the next action (moving or opening doors). 
+// If the elevator is moving or has doors open, it updates the request state accordingly.
 func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.ButtonType,
 	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
 	case elevator.EB_DoorOpen:
 		if ShouldClearImmediately(elev, btnFloor, btnType) {
+			// Open door for another 3 seconds
 			doorTimerStartCh <- true
 			elev = clearLocalOrder(elev, btnFloor, btnType, completedOrderCh)
 		} else {
@@ -152,8 +155,9 @@ func requestButtonPress(elev elevator.Elevator, btnFloor int, btnType elevio.But
 	return elev
 }
 
-// When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed
-// to stop. if it is supposed to stop it stops, clears the floor then opens the door.
+// When arriving at a floor this sets the floor indicator to the floor, and checks if it is supposed to stop. 
+// If it is supposed to stop it stops, clears the localOrders on the floor and then opens the door.
+// Sends to motorstop timer that it should stop and resets an eventual motorstop state
 func floorArrival(elev elevator.Elevator, newFloor int,
 	doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
@@ -183,12 +187,9 @@ func floorArrival(elev elevator.Elevator, newFloor int,
 	return elev
 }
 
-// DoorTimeout is used to start the timer when the door openes, and
-// handles if there is an obstruction when the door closes. It is
-// runned twice, once at the begining of the timer initialisation and
-// once when the door is supposed to close to check if the obstruction
-// is active.
-func doorTimeout(elev elevator.Elevator, doorTimerStartCh, arrivedOnFloorCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
+// Chooses next action for the elevator after the door is closed and the elevator is ready to move
+func doorTimeout(elev elevator.Elevator, 
+	doorTimerStartCh, departureFromFloorCh chan bool, completedOrderCh chan elevio.ButtonEvent) elevator.Elevator {
 
 	switch elev.Behaviour {
 	case elevator.EB_DoorOpen:

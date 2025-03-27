@@ -13,7 +13,7 @@ type Config struct {
 	NumBtns          int           `json:"NumBtns"`
 	TravelTime       int           `json:"TravelTime"`
 	DoorOpenDuration time.Duration `json:"DoorOpenDuration"`
-	MotorStopTimeout time.Duration `json:"motorStopTimeout"`
+	MotorStopTimeout time.Duration `json:"MotorStopTimeout"`
 	NetworkInterval  time.Duration `json:"NetworkInterval"`
 	NetworkTimeout   time.Duration `json:"NetworkTimeout"`
 }

@@ -33,7 +33,7 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 	peerUpdateCh := make(chan network.PeerUpdate)
 	remoteElevatorUpdateCh := make(chan network.ElevatorStateMsg)
 
-	// enable sending on nettwork
+	// enable sending on network
 	peerTxEnable := make(chan bool)
 	// between transmitter and reciever
 	transmitterToRecivierSkipCh := make(chan bool)
@@ -44,11 +44,11 @@ func PrimarySetup(id string, port string, backupPort string, conn *net.UDPConn) 
 	go network.Transmitter(17135, id, peerTxEnable, transmitterToRecivierSkipCh, ordersToPeersCH)
 	go network.Receiver(17135, id, transmitterToRecivierSkipCh, peerUpdateCh, remoteElevatorUpdateCh)
 
-	// Periodic state sync to backup
+	// Periodic heartbeat to backup
 	go func() {
 		for {
 			time.Sleep(500 * time.Millisecond)
-			_, err := conn.Write([]byte("ping")) // Simple heartbeat
+			_, err := conn.Write([]byte("ping")) 
 			if err != nil {
 				log.Printf("Failed to send to backup: %v", err)
 			}

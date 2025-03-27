@@ -24,7 +24,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	numFloors = cfg.NumFloors // Preserving your exact naming
+	numFloors = cfg.NumFloors
 	numBtns = cfg.NumBtns
 	travelTime = cfg.TravelTime
 }

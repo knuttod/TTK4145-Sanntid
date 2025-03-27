@@ -11,6 +11,7 @@ const (
 	CV_InDirn
 )
 
+//The different orders states symbolises a different value in a cyclic counter
 type OrderState int
 
 const (
@@ -18,6 +19,7 @@ const (
 	Ordr_Unconfirmed OrderState = 1
 	Ordr_Confirmed   OrderState = 2
 	Ordr_Complete    OrderState = 3
+
 	Ordr_Unknown 	 OrderState = -1
 )
 
