@@ -16,14 +16,14 @@ Alternatively some more flags can be used
 -processPairsFlag=<true/false>
 ```
 
-The port flag must be used and the port specified is the one that the program should communicate with the sim-/elevatorserver on. If no id is given a random id will be assigned. The last flag is to enable a processPairs backup system, this is by default turned off as this functionality only work on Linux operating systems. 
+The port flag must be used and the port specified is the one that the program should communicate with the sim-/elevatorserver on. If no id is given, a random id will be assigned. The last flag is to enable a processPairs backup system, this is by default turned off as this functionality only work on Linux operating systems. 
 
 ## Description
 Our system can in large be divided into three main modules. 
 
 
 ### FSM
-A state machine for a single elevator. It interacts with the elevetor io, which in itself is a standalone module, by getting information about button presses and current floor and setting lights and motor direction. Button presses are sent to the orders module for assignment of orders and eventual orders to be taken by the fsm are given from the orders module. 
+A state machine for a single elevator. It interacts with the elevetor io, which in itself is a standalone module, by getting information about button presses, current floor, setting lights and motor direction. Button presses are sent to the orders module for assignment of orders and eventual orders to be taken by the fsm are given from the orders module. 
 
 ### Orders
 
