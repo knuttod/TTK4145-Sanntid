@@ -31,7 +31,7 @@ The order module is responsible for handling and synchronising all orders, eithe
 
 ### Network
 
-The network module is responsible for sending information to the other elevators brodcasting using UDP. Each elevator sends information about itself and all it knows about the orders of itself and the other elevators. This together with its id is sent many times a second which also makes the module able to keep track of elevators disconnecting and connecting. An elevator is assumed disconnected when others have not received a message from it in a while. This should also handle packet loss. The elevator states is JSON enoded.
+The network module is responsible for sending information to the other elevators brodcasting using UDP. Each elevator sends information about itself and all it knows about the orders of itself and the other elevators. This together with its id is sent many times a second which also makes the module able to keep track of elevators disconnecting and connecting. An elevator is assumed disconnected when others have not received a message from it in a while. This also handles packet loss. The elevator states is JSON encoded.
 
 ## Config file
 
