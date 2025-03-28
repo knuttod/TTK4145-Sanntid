@@ -53,9 +53,11 @@ func OrderHandler(id string,
 	elevators[selfId] = elevator.NetworkElevator{Elevator: elev, AssignedOrders: assignedOrders}
 
 	activeElevators := []string{selfId}
+	// To keep track of hall lights to not oversend to elevatorserver
 	activeHallLights := initHallLights()
 
 	for {
+		// Sends a deepcopy to ensure correct message passing
 		ordersToPeersCH <- deepcopy.DeepCopyNettworkElevator(elevators[selfId])
 		select {
 

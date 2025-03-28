@@ -7,7 +7,7 @@ import (
 // Timer for the door. Should run as a go-routine. Opening time of door is given as an input.
 // Timer is started by sending on doorTimerStartCh and timeout of timer is sent on doorTimerEndCh
 func doorTimer(doorOpenTime time.Duration, 
-	doorTimerStartCh chan bool, doorTimerEndCh chan bool) {
+	doorTimerStartCh <-chan bool, doorTimerEndCh chan<- bool) {
 
 	<- doorTimerStartCh
 	timer := time.NewTimer(doorOpenTime)
@@ -26,7 +26,7 @@ func doorTimer(doorOpenTime time.Duration,
 // Timer is aborted if something is sent on arrivedOnFloorCh (every time an elevator reaches a floor).
 // On a timeout, aka. a motorstop happend, it is sent on motorStopCh.
 func motorStopTimer(motorStopTimeoutTime time.Duration, 
-	arrivedOnFloorCh, departureFromFloorCh, motorStopCh chan bool) {
+	arrivedOnFloorCh, departureFromFloorCh <-chan bool, motorStopCh chan<- bool) {
 
 	<- departureFromFloorCh
 	timer := time.NewTimer(motorStopTimeoutTime)

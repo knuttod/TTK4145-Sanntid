@@ -59,10 +59,11 @@ func Fsm(id string,
 	go doorTimer(DoorTimerInterval, doorTimerStartCh, doorTimerFinishedCh)
 	go motorStopTimer(motorStopTimeout, arrivedOnFloorCh, departureFromFloorCh, motorStopCh)
 
+
 	elev := fsmInit(drvFloorsCh)
 
 	for {
-		//sends a deepcopy to ensure correct message passing
+		// Sends a deepcopy to ensure correct message passing
 		fsmToOrdersCh <- deepcopy.DeepCopyElevatorStruct(elev)
 		select {
 
@@ -71,8 +72,8 @@ func Fsm(id string,
 			buttonPressCh <- button_input
 
 		// The elevator should act on an order given by the orders module 
-		case Order := <-localAssignedOrderCh:
-			elev = requestButtonPress(elev, Order.Floor, Order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCh)
+		case order := <-localAssignedOrderCh:
+			elev = requestButtonPress(elev, order.Floor, order.Button, doorTimerStartCh, departureFromFloorCh, completedOrderCh)
 		
 		
 		case newFloor := <-drvFloorsCh:
